@@ -7,11 +7,11 @@ import speech_recognition as sr
 from pydub import AudioSegment
 from pydub.silence import split_on_silence
 
-# Create necessary directories
+#create necessary directories
 os.makedirs('wavs', exist_ok=True)
 os.makedirs('input', exist_ok=True)
 
-# Initialize the recognizer for SpeechRecognition
+#initialize the recognizer for SpeechRecognition
 recognizer = sr.Recognizer()
 
 def split_audio(input_file, base_filename):
@@ -32,6 +32,7 @@ def split_audio(input_file, base_filename):
             chunk.export(chunk_path, format="wav")
             prepped_audio.append(chunk_path)
         else:
+            #code will try to split audio into smaller chunks between 2-11s
             print(f"[DEBUG] Skipping chunk {i}: Duration {chunk_duration / 1000:.2f} seconds not in 2-11s range")
     
     return prepped_audio
@@ -44,7 +45,7 @@ def transcribe_audio(audio_file):
         audio_data = recognizer.record(source)
         
         try:
-            # Use Google's speech recognition engine
+            #transcript audio with speech recog
             transcript = recognizer.recognize_google(audio_data)
             print(f"[DEBUG] Transcript: {transcript}")
         except sr.UnknownValueError:
@@ -69,16 +70,16 @@ def process_wav_files(input_dir):
         input_path = os.path.join(input_dir, wav_file)
         print(f"[DEBUG] Processing file: {wav_file}")
         
-        # Split the audio and generate chunks
+        #split the audio and generate chunks
         prepped_audio_chunks = split_audio(input_path, base_filename)
         
-        # Transcribe each chunk and add to metadata
+        #transcribe each chunk and add to metadata
         for chunk_file in prepped_audio_chunks:
             transcript = transcribe_audio(chunk_file)
             chunk_name = os.path.basename(chunk_file)  # Get the filename for the chunk
             metadata.append([os.path.join('wavs', chunk_name), transcript])  # Relative path for CSV
     
-    # Create the CSV in LJSpeech format
+    #create the CSV in LJSpeech format
     print(f"[DEBUG] Writing metadata.csv...")
     df = pd.DataFrame(metadata, columns=["wav_filename", "transcript"])
     df.to_csv("metadata.csv", index=False)  # Save the metadata at the root
@@ -88,7 +89,7 @@ def zip_output(output_filename="dataset.zip"):
     """Zips the wavs directory and metadata.csv into the output zip file."""
     print(f"[DEBUG] Zipping the output files into {output_filename}...")
     try:
-        # Create a zip file with the 'wavs' directory and 'metadata.csv'
+        #create a zip file with the 'wavs' directory and 'metadata.csv'
         subprocess.run(['zip', '-r', output_filename, 'wavs', 'metadata.csv'], check=True)
         print(f"[DEBUG] Successfully created {output_filename}")
     except subprocess.CalledProcessError as e:
@@ -96,10 +97,10 @@ def zip_output(output_filename="dataset.zip"):
 
 def main():
     print(f"[DEBUG] Starting the audio processing pipeline...")
-    # Step 1: Process WAV files
+    #process WAV files
     process_wav_files('input')
     
-    # Step 2: Zip the output using native zip
+    #zip the output using native zip
     zip_output()
     print(f"[DEBUG] Pipeline finished successfully!")
 
