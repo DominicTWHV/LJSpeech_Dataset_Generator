@@ -21,7 +21,7 @@ sudo apt update
 sudo apt upgrade
 sudo reboot
 ```
-_Note: The reboot is optional_
+_Note: The reboot is optional, unless the update involves the kernel/boot image, then it would be mandatory_
 
 **Clone repository:**
 
