@@ -16,9 +16,11 @@ Script tested on Ubuntu Server 22.04 LTS with python version `3.10.12`
 
 **Update APT Packages:**
 
-```sudo apt update
+```
+sudo apt update
 sudo apt upgrade
-sudo reboot```
+sudo reboot
+```
 
 **Clone repository:**
 
@@ -26,11 +28,13 @@ sudo reboot```
 
 **Prepare an Environment:**
 
-```sudo apt install python3 python3-venv python3-pip ffmpeg zip
+```
+sudo apt install python3 python3-venv python3-pip ffmpeg zip
 cd LJSpeech_Dataset_Generator
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt```
+pip install -r requirements.txt
+```
 
 **Prepare Sample Audio:**
 
