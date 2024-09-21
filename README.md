@@ -21,6 +21,7 @@ sudo apt update
 sudo apt upgrade
 sudo reboot
 ```
+-# Note: The reboot is optional
 
 **Clone repository:**
 
