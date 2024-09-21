@@ -9,6 +9,7 @@ from pydub.silence import split_on_silence
 
 # Create necessary directories
 os.makedirs('wavs', exist_ok=True)
+os.makedirs('input', exist_ok=True)
 
 # Initialize the recognizer for SpeechRecognition
 recognizer = sr.Recognizer()
