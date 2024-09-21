@@ -10,11 +10,11 @@ dataset.zip/
     └──  ...
 ```
 
-# Setup
-Script tested on Ubuntu Server 22.04 LTS
-Newest packages at the time of writing.
+# Setup:
 
-Update APT Packages:
+Script tested on Ubuntu Server 22.04 LTS with python version `3.10.12`
+
+**Update APT Packages:**
 
 `sudo apt update`
 
@@ -22,11 +22,11 @@ Update APT Packages:
 
 `sudo reboot`
 
-Clone repository:
+**Clone repository:**
 
 `git clone https://github.com/DominicTWHV/LJSpeech_Dataset_Generator.git`
 
-Prepare an Environment:
+**Prepare an Environment:**
 
 `sudo apt install python3 python3-venv python3-pip ffmpeg zip`
 
@@ -38,11 +38,11 @@ Prepare an Environment:
 
 `pip install -r requirements.txt`
 
-Prepare Sample Audio:
+**Prepare Sample Audio:**
 
 Move all your `.wav` files into input/
 
-Running:
+**Running:**
 
 `python3 main.py`
 
