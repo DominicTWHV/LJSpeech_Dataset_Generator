@@ -25,17 +25,17 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 #tells user to move files in
-echo "Place your .wav files in the 'input/' directory."
+echo "Notice: Please place your .wav files in the 'input/' directory now"
 
 echo "Do you wish to automatically clean up background noise? (y/n)"
-read run_choice
-if [ "$run_choice" = "y" ]; then
-    python3 main.py
+read filter_choice
+if [ "$filter_choice" = "y" ]; then
+    python3 filter.py
 else
-    echo "You can run it manually later with: python3 clean.py"
+    echo "You can run it manually later with: python3 filter.py"
 
 #asks to run or not
-echo "Ready to run the main.py script to generate the dataset. Run now? (y/n)"
+echo "Ready to run the main.py script to generate the dataset? (y/n)"
 read run_choice
 if [ "$run_choice" = "y" ]; then
     python3 main.py
