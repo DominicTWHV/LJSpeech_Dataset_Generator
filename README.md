@@ -44,7 +44,9 @@ Move all your `.wav` files into input/
 
 **Running:**
 
-```python3 main.py```
+```
+python3 main.py
+```
 
 # Post:
 
