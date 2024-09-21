@@ -24,7 +24,9 @@ sudo reboot
 
 **Clone repository:**
 
-```git clone https://github.com/DominicTWHV/LJSpeech_Dataset_Generator.git```
+```
+git clone https://github.com/DominicTWHV/LJSpeech_Dataset_Generator.git
+```
 
 **Prepare an Environment:**
 
