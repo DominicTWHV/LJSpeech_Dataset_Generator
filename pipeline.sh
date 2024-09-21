@@ -27,6 +27,13 @@ pip install -r requirements.txt
 #tells user to move files in
 echo "Place your .wav files in the 'input/' directory."
 
+echo "Do you wish to automatically clean up background noise? (y/n)"
+read run_choice
+if [ "$run_choice" = "y" ]; then
+    python3 main.py
+else
+    echo "You can run it manually later with: python3 clean.py"
+
 #asks to run or not
 echo "Ready to run the main.py script to generate the dataset. Run now? (y/n)"
 read run_choice
