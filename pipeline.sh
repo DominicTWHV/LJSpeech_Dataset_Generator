@@ -10,9 +10,6 @@ if [ "$reboot_choice" = "y" ]; then
     sudo reboot
 fi
 
-#clone repo
-git clone https://github.com/DominicTWHV/LJSpeech_Dataset_Generator.git
-
 #make directories
 mkdir -p input
 mkdir -p wavs
