@@ -6,7 +6,7 @@ dataset.zip/
 │
 ├── metadata.csv
 └── wavs/
-    ├── <name>-<index>.wav
+    ├── <name>_processed<index>.wav
     └──  ...
 ```
 
