@@ -6,7 +6,6 @@ import wave
 
 #create necessary directories
 os.makedirs('wavs', exist_ok=True)
-os.makedirs('input', exist_ok=True)
 
 #initialize recognizer
 recognizer = sr.Recognizer()
