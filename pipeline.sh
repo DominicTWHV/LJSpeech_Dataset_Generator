@@ -11,8 +11,12 @@ if [ "$reboot_choice" = "y" ]; then
 fi
 
 #make directories
-mkdir -p input
-mkdir -p wavs
+mkdir input
+mkdir wavs
+
+#grant perms
+sudo chown -R "$USER":"$USER" input wavs
+chmod -R 755 input wavs
 
 #install dependencies
 sudo apt install -y python3 python3-venv python3-pip ffmpeg zip
