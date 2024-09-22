@@ -15,8 +15,8 @@ mkdir input
 mkdir wavs
 
 #grant perms
-sudo chown -R "$USER":"$USER" input wavs
-chmod -R 755 input wavs
+sudo chown -R "$USER":"$USER" input
+chmod -R 755 input
 
 #install dependencies
 sudo apt install -y python3 python3-venv python3-pip ffmpeg zip
@@ -28,9 +28,11 @@ source venv/bin/activate
 #install pip packages
 pip install -r requirements.txt
 
+
+echo "======================================================="
 #tells user to move files in
 echo "Notice: Please place your .wav files in the 'input/' directory now"
-
+echo "======================================================="
 echo "Do you wish to automatically clean up background noise? (y/n)"
 read filter_choice
 if [ "$filter_choice" = "y" ]; then
@@ -38,7 +40,7 @@ if [ "$filter_choice" = "y" ]; then
 else
     echo "You can run it manually later with: python3 filter.py"
 fi
-
+echo "======================================================="
 echo "Ready to run the main.py script to generate the dataset? (y/n)"
 read run_choice
 if [ "$run_choice" = "y" ]; then
@@ -46,7 +48,7 @@ if [ "$run_choice" = "y" ]; then
 else
     echo "You can run it manually later with: python3 main.py"
 fi
-
+echo "======================================================="
 #deactivate venv
 deactivate
 
