@@ -1,4 +1,4 @@
-# LJSpeech Dataset Generator
+# Overview
 
 Designed for use with PiperTTS (custom model training), using a standard file structure:
 
@@ -24,6 +24,8 @@ You may also modify the `sep='|'` argument in line 52 to whatever seperator your
 
 _PiperTTS uses `|`, which is the default given here_
 
+-----------------------------------
+
 # Setup:
 
 Script tested on Ubuntu Server 22.04 LTS with python version `3.10.12`
@@ -47,7 +49,9 @@ chmod +x pipeline.sh
 ./pipeline.sh
 ```
 
-Move all your `.wav` files into wavs/ when instructed to do so
+Move all your `.wav` files into wavs/ when instructed to do so, and then follow the (y/n) prompts.
+
+-----------------------------------
 
 # Post:
 
