@@ -49,7 +49,7 @@ def process_wav_files(input_dir):
     #create metadata with correct format
     print(f"[DEBUG] Writing metadata.csv...")
     df = pd.DataFrame(metadata, columns=["wav_filename", "transcript"])
-    df.to_csv("metadata.csv", index=False)
+    df.to_csv("metadata.csv", sep='|', index=False)
     print(f"[DEBUG] metadata.csv generated successfully")
 
 def zip_output(output_filename="dataset.zip"):
