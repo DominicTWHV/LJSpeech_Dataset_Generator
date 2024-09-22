@@ -1,6 +1,7 @@
 # LJSpeech Dataset Generator
 
 Designed for use with PiperTTS (custom model training), using a standard file structure:
+
 ```
 dataset.zip/
 │
@@ -10,6 +11,13 @@ dataset.zip/
     └──  ...
 ```
 _Should also be compatible with other TTS engines that uses a LJSpeech file structure for training._
+
+```csv
+wav_filename|transcript
+wavs/<name>_processed<index>.wav|<transcript>
+wavs/<name>_processed<index>.wav|<transcript>
+...
+```
 
 # Setup:
 
