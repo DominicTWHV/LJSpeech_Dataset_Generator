@@ -30,7 +30,7 @@ chmod +x pipeline.sh
 **Run pipeline:**
 
 ```
-sudo ./pipeline.sh
+./pipeline.sh
 ```
 
 Move all your `.wav` files into input/ when instructed to do so
