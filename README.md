@@ -34,7 +34,7 @@ chmod +x pipeline.sh
 ./pipeline.sh
 ```
 
-Move all your `.wav` files into input/ when instructed to do so
+Move all your `.wav` files into wavs/ when instructed to do so
 
 # Post:
 
