@@ -94,15 +94,43 @@ def zip_output(output_filename="dataset.zip"):
         print(f"[DEBUG] Successfully created {output_filename}")
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] Error while zipping: {e}")
+        
+def total_audio_length(directory):
 
-def main():
-    print(f"[DEBUG] Starting the audio processing pipeline...")
-    #process WAV files
-    process_wav_files('input')
+    total_length = 0
+    wav_files = [f for f in os.listdir(directory) if f.endswith('.wav')]
     
-    #zip the output using native zip
-    zip_output()
-    print(f"[DEBUG] Pipeline finished successfully!")
+    for wav_file in wav_files:
+        file_path = os.path.join(directory, wav_file)
+        with wave.open(file_path, 'rb') as wf:
+            duration = wf.getnframes() / wf.getframerate()
+            total_length += duration
+            
+    return total_length
 
+def calculate_audio_retention():
+
+    original_length = total_audio_length('input')
+    processed_length = total_audio_length('wavs')
+    
+    retained_percentage = (processed_length / original_length) * 100 if original_length > 0 else 0
+    lost_percentage = 100 - retained_percentage
+    
+    print(f"[DEBUG] Original Total Length: {original_length:.2f} seconds")
+    print(f"[DEBUG] Processed Total Length: {processed_length:.2f} seconds")
+    print(f"[DEBUG] Retained Percentage: {retained_percentage:.2f}%")
+    print(f"[DEBUG] Lost Percentage: {lost_percentage:.2f}%")
+    
+def main():
+    
+    print(f"[DEBUG] Starting the audio processing pipeline...")
+    process_wav_files('input')
+    zip_output()
+    
+    # Calculate audio retention statistics
+    calculate_audio_retention()
+    
+    print(f"[DEBUG] Pipeline finished successfully!")
+    
 if __name__ == "__main__":
     main()
