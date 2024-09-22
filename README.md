@@ -34,14 +34,14 @@ Script tested on Ubuntu Server 22.04 LTS with python version `3.10.12`
 git clone https://github.com/DominicTWHV/LJSpeech_Dataset_Generator.git
 ```
 
-**Prepare an Environment:**
+**Setting up:**
 
 ```
 cd LJSpeech_Dataset_Generator
 chmod +x pipeline.sh
 ```
 
-**Run pipeline:**
+**Running:**
 
 ```
 ./pipeline.sh
