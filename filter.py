@@ -3,9 +3,13 @@ import noisereduce as nr
 import librosa
 import soundfile as sf
 import numpy as np
+import concurrent.futures
+import threading
 
 #define the input directory
 input_dir = 'input/'
+#lock to safely print debug messages in multithreaded environment
+print_lock = threading.Lock()
 
 def apply_dynamic_noise_reduction(audio_data, sample_rate, frame_length=2048, hop_length=512):
     #calculate short-term energy for each frame
@@ -30,7 +34,7 @@ def apply_dynamic_noise_reduction(audio_data, sample_rate, frame_length=2048, ho
     else:
         noise_profile = audio_data[:frame_length]  #default to the first frame if no quiet sections are found
 
-    #a pply noise reduc
+    #apply noise reduction
     reduced_audio = np.array(audio_data)
     for i in range(0, len(audio_data), hop_length):
         start_idx = i
@@ -50,31 +54,41 @@ def apply_dynamic_noise_reduction(audio_data, sample_rate, frame_length=2048, ho
 
     return reduced_audio
 
+def process_single_audio_file(file):
+    file_path = os.path.join(input_dir, file)
+
+    #load the audio file
+    audio_data, sample_rate = librosa.load(file_path, sr=None)
+    with print_lock:
+        print(f"[DEBUG]: Processing {file_path}.")
+
+    #apply dynamic noise reduction
+    reduced_noise = apply_dynamic_noise_reduction(audio_data, sample_rate)
+
+    #create new filename with _cleaned suffix
+    new_filename = file.replace('.wav', '_cleaned.wav')
+    new_file_path = os.path.join(input_dir, new_filename)
+
+    #save the cleaned audio
+    sf.write(new_file_path, reduced_noise, sample_rate)
+
+    #remove the original file
+    os.remove(file_path)
+
 def process_audio_files():
     #list all .wav files in the input directory
     files = [f for f in os.listdir(input_dir) if f.endswith('.wav') and not f.endswith('_cleaned.wav')]
-    
-    for file in files:
-        file_path = os.path.join(input_dir, file)
+
+    #use ThreadPoolExecutor to process files concurrently
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        #submit tasks to the thread pool
+        futures = [executor.submit(process_single_audio_file, file) for file in files]
         
-        #load the audio file
-        audio_data, sample_rate = librosa.load(file_path, sr=None)
-        print(f"[DEBUG]: Processing {file_path}.")
-        
-        #apply dynamic noise reduction
-        reduced_noise = apply_dynamic_noise_reduction(audio_data, sample_rate)
-        
-        #create new filename with _cleaned suffix
-        new_filename = file.replace('.wav', '_cleaned.wav')
-        new_file_path = os.path.join(input_dir, new_filename)
-        
-        #save the cleaned audio
-        sf.write(new_file_path, reduced_noise, sample_rate)
-        
-        #remove the original file
-        os.remove(file_path)
-        
-    print(f"[DEBUG]: Processed and cleaned {len(files)} files.")
+        #wait for all tasks to complete
+        concurrent.futures.wait(futures)
+
+    with print_lock:
+        print(f"[DEBUG]: Processed and cleaned {len(files)} files.")
 
 if __name__ == '__main__':
     process_audio_files()
