@@ -10,13 +10,15 @@ from pydub.silence import split_on_silence
 #create necessary directories
 os.makedirs('wavs', exist_ok=True)
 os.makedirs('input', exist_ok=True)
+os.makedirs('wavs_split_temp', exist_ok=True)
+os.makedirs('wavs_split_final', exist_ok=True)
+
 
 #initialize the recognizer for sr
 recognizer = sr.Recognizer()
 
 def split_audio(input_file, base_filename):
-    #Audio splitting
-    
+    """Splits audio into chunks based on recognized words, storing them in /wavs."""
     print(f"[DEBUG] Loading audio file: {input_file}")
     audio = AudioSegment.from_wav(input_file)
 
@@ -24,45 +26,59 @@ def split_audio(input_file, base_filename):
     with sr.AudioFile(input_file) as source:
         audio_data = recognizer.record(source)
         try:
-            #sr with timestamps
-            response = recognizer.recognize_google(audio_data, show_all=True)
-            if not response or 'alternative' not in response:
-                print(f"[DEBUG] No transcription results for {input_file}")
-                return []
+            #get transcription without word timings
+            response = recognizer.recognize_google(audio_data)
+            print(f"[DEBUG] Transcription: {response}")
 
-            #extract timings
-            words_info = response['alternative'][0].get('words', [])
-            if not words_info:
-                print(f"[DEBUG] No word timings found for {input_file}")
-                return []
+            #split the transcript into words
+            words = response.split()
+            word_times = []
+            current_time = 0
+
+            #def word bounds
+            for word in words:
+                estimated_duration = len(word) * 250  # 250ms per character, change as needed
+                end_time = current_time + estimated_duration
+                word_times.append((current_time, end_time))
+                current_time = end_time
 
             prepped_audio = []
-            for i, word_info in enumerate(words_info):
-                start_time = word_info['startTime']  
-                end_time = word_info['endTime']      
-                chunk_duration = end_time - start_time
+            current_chunk = AudioSegment.silent(duration=0)  # Start with an empty chunk
 
-                #convert times from 'HH:MM:SS.milliseconds' to milliseconds
-                start_ms = int(float(start_time.split('s')[0]) * 1000)
-                end_ms = int(float(end_time.split('s')[0]) * 1000)
+            for start_ms, end_ms in word_times:
+                chunk = audio[start_ms:end_ms]
+                chunk_duration = len(chunk)
 
-                if 2000 <= chunk_duration * 1000 <= 11000:  #ensure between 2-11s
+                #save all chunks
+                if chunk_duration > 0:
+                    if chunk_duration <= 11000:  #save chunks up to 11 seconds
+                        prepped_audio.append(chunk)
+                    else:  #continue splitting if length > 11s
+                        while chunk_duration > 11000:
+                            part = chunk[:11000]
+                            prepped_audio.append(part)
+                            chunk = chunk[11000:]
+                            chunk_duration = len(chunk)
+                        if len(chunk) > 0:  #add remainders
+                            prepped_audio.append(chunk)
+
+            # Export the chunks
+            chunk_paths = []
+            for i, chunk in enumerate(prepped_audio):
+                if len(chunk) > 0:
                     chunk_name = f"{base_filename}-{i:04d}.wav"
                     chunk_path = os.path.join('wavs', chunk_name)
-                    print(f"[DEBUG] Saving chunk {i}: {chunk_name} (Duration: {chunk_duration:.2f} seconds)")
-                    chunk = audio[start_ms:end_ms]
+                    print(f"[DEBUG] Saving chunk {i}: {chunk_name} (Duration: {len(chunk) / 1000:.2f} seconds)")
                     chunk.export(chunk_path, format="wav")
-                    prepped_audio.append(chunk_path)
-                else:
-                    print(f"[DEBUG] Skipping chunk {i}: Duration {chunk_duration:.2f} seconds not in 2-11s range")
+                    chunk_paths.append(chunk_path)
 
-            return prepped_audio
+            return chunk_paths
 
         except sr.UnknownValueError:
-            print(f"[DEBUG] Google Speech Recognition could not understand {input_file}")
+            print(f"[WARNING] Speech Recognition could not understand {input_file}")
             return []
         except sr.RequestError as e:
-            print(f"[DEBUG] Could not request results from Google Speech Recognition service; {e}")
+            print(f"[ERROR] Could not request results from Speech Recognition service; {e}\n\nAre you connected to the internet?")
             return []
 
 
@@ -78,10 +94,10 @@ def transcribe_audio(audio_file):
             transcript = recognizer.recognize_google(audio_data)
             print(f"[DEBUG] Transcript: {transcript}")
         except sr.UnknownValueError:
-            print(f"[DEBUG] Google Speech Recognition could not understand {audio_file}")
+            print(f"[WARNING] Google Speech Recognition could not understand {audio_file}")
             transcript = ""
         except sr.RequestError as e:
-            print(f"[DEBUG] Could not request results from Google Speech Recognition service; {e}")
+            print(f"[ERROR] Could not request results from Speech Recognition service; {e}\n\nAre you connected to the internet?")
             transcript = ""
     
     return transcript
@@ -138,7 +154,6 @@ def total_audio_length(directory):
     return total_length
 
 def calculate_audio_retention():
-
     original_length = total_audio_length('input')
     processed_length = total_audio_length('wavs')
     
@@ -149,17 +164,20 @@ def calculate_audio_retention():
     print(f"[DEBUG] Processed Total Length: {processed_length:.2f} seconds")
     print(f"[DEBUG] Retained Percentage: {retained_percentage:.2f}%")
     print(f"[DEBUG] Lost Percentage: {lost_percentage:.2f}%")
+
+    if lost_percentage < 15:
+        zip_output()
+    else:
+        print(f"[ERROR] Loss percentage too high. Aborting zipping")
+
     
 def main():
     
     print(f"[DEBUG] Starting the audio processing pipeline...")
     process_wav_files('input')
-    zip_output()
-    
-    # Calculate audio retention statistics
     calculate_audio_retention()
     
-    print(f"[DEBUG] Pipeline finished successfully!")
+    print(f"[OK] Pipeline finished successfully!")
     
 if __name__ == "__main__":
     main()
