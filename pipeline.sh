@@ -33,8 +33,8 @@ if [ "$filter_choice" = "y" ]; then
     python3 filter.py
 else
     echo "You can run it manually later with: python3 filter.py"
+fi
 
-#asks to run or not
 echo "Ready to run the main.py script to generate the dataset? (y/n)"
 read run_choice
 if [ "$run_choice" = "y" ]; then
