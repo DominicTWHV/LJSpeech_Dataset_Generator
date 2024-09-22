@@ -11,12 +11,11 @@ if [ "$reboot_choice" = "y" ]; then
 fi
 
 #make directories
-mkdir input
 mkdir wavs
 
 #grant perms
-sudo chown -R "$USER":"$USER" input
-chmod -R 755 input
+sudo chown -R "$USER":"$USER" wavs
+chmod -R 755 wavs
 
 #install dependencies
 sudo apt install -y python3 python3-venv python3-pip ffmpeg zip
@@ -27,34 +26,34 @@ source venv/bin/activate
 
 #install pip packages
 pip install -r requirements.txt
-
-
+echo
+echo
 echo "======================================================="
-
-echo "Notice: Please place your .wav files in the 'input/' directory now"
-
+echo
+echo "Notice: Please place your .wav files in the 'wavs/' directory now"
+echo
 echo "======================================================="
-
-echo "Do you wish to automatically clean up background noise? (y/n)"
+echo
+echo "Do you wish to automatically clean up background noise? Please note this function is a little quirky. Use at your own risk. (y/n)"
 read filter_choice
 if [ "$filter_choice" = "y" ]; then
     python3 filter.py
 else
     echo "[OK] You can run it manually later with: python3 filter.py"
 fi
-
+echo
 echo "======================================================="
-
-echo "Do you wish to split the audio files into smaller chunks? (y/n)"
+echo
+echo "Do you wish to split the audio files into smaller chunks? It's recommended that you do so. (y/n)"
 read filter_choice
 if [ "$filter_choice" = "y" ]; then
     python3 split.py
 else
     echo "[OK] You can run it manually later with: python3 split.py"
 fi
-
+echo
 echo "======================================================="
-
+echo
 echo "Ready to run the main.py script to generate the dataset? (y/n)"
 read run_choice
 if [ "$run_choice" = "y" ]; then
@@ -62,10 +61,10 @@ if [ "$run_choice" = "y" ]; then
 else
     echo "[OK] You can run it manually later with: python3 main.py"
 fi
-
+echo
 echo "======================================================="
-
+echo
 #deactivate venv
 deactivate
 
-echo "Setup complete!"
+echo "[OK] Dataset Generation Complete!"
