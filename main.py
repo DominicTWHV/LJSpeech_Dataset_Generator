@@ -4,11 +4,11 @@ import pandas as pd
 import speech_recognition as sr
 import wave
 
-# Create necessary directories
+#create necessary directories
 os.makedirs('wavs', exist_ok=True)
 os.makedirs('input', exist_ok=True)
 
-# Initialize the recognizer for SpeechRecognition
+#initialize recognizer
 recognizer = sr.Recognizer()
 
 def transcribe_audio(audio_file):
@@ -19,7 +19,7 @@ def transcribe_audio(audio_file):
         audio_data = recognizer.record(source)
         
         try:
-            # Transcribe audio with speech recognition
+            #transcribe audio with sr
             transcript = recognizer.recognize_google(audio_data)
             print(f"[DEBUG] Transcript: {transcript}")
         except sr.UnknownValueError:
@@ -43,21 +43,21 @@ def process_wav_files(input_dir):
         input_path = os.path.join(input_dir, wav_file)
         print(f"[DEBUG] Processing file: {wav_file}")
         
-        # Transcribe the audio and add to metadata
+        #append metadata
         transcript = transcribe_audio(input_path)
-        metadata.append([os.path.join('wavs', wav_file), transcript])  # Relative path for CSV
+        metadata.append([os.path.join('wavs', wav_file), transcript])
     
-    # Create the CSV in LJSpeech format
+    #create metadata with correct format
     print(f"[DEBUG] Writing metadata.csv...")
     df = pd.DataFrame(metadata, columns=["wav_filename", "transcript"])
-    df.to_csv("metadata.csv", index=False)  # Save the metadata at the root
+    df.to_csv("metadata.csv", index=False)
     print(f"[DEBUG] metadata.csv generated successfully")
 
 def zip_output(output_filename="dataset.zip"):
     """Zips the wavs directory and metadata.csv into the output zip file."""
     print(f"[DEBUG] Zipping the output files into {output_filename}...")
     try:
-        # Create a zip file with the 'wavs' directory and 'metadata.csv'
+        #zip file
         subprocess.run(['zip', '-r', output_filename, 'wavs', 'metadata.csv'], check=True)
         print(f"[DEBUG] Successfully created {output_filename}")
     except subprocess.CalledProcessError as e:
@@ -77,7 +77,7 @@ def total_audio_length(directory):
 
 def main():
     print(f"[DEBUG] Starting the audio processing pipeline...")
-    process_wav_files('wavs')  # Changed to process from 'wavs' directory
+    process_wav_files('wavs')
     zip_output()
     
     print(f"[OK] Pipeline finished successfully!")
