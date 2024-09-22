@@ -15,27 +15,56 @@ os.makedirs('input', exist_ok=True)
 recognizer = sr.Recognizer()
 
 def split_audio(input_file, base_filename):
-    """Splits audio into 2-11 second chunks, stored in /wavs."""
+    #Audio splitting
+    
     print(f"[DEBUG] Loading audio file: {input_file}")
     audio = AudioSegment.from_wav(input_file)
 
-    print(f"[DEBUG] Splitting audio into chunks based on silence...")
-    chunks = split_on_silence(audio, min_silence_len=500, silence_thresh=-40)
+    print(f"[DEBUG] Transcribing audio to detect word boundaries...")
+    with sr.AudioFile(input_file) as source:
+        audio_data = recognizer.record(source)
+        try:
+            #sr with timestamps
+            response = recognizer.recognize_google(audio_data, show_all=True)
+            if not response or 'alternative' not in response:
+                print(f"[DEBUG] No transcription results for {input_file}")
+                return []
 
-    prepped_audio = []
-    for i, chunk in enumerate(chunks):
-        chunk_duration = len(chunk)
-        if 2000 <= chunk_duration <= 11000:  #ensure between 2-11 seconds
-            chunk_name = f"{base_filename}-{i:04d}.wav"
-            chunk_path = os.path.join('wavs', chunk_name)  #save in the 'wavs' folder
-            print(f"[DEBUG] Saving chunk {i}: {chunk_name} (Duration: {chunk_duration / 1000:.2f} seconds)")
-            chunk.export(chunk_path, format="wav")
-            prepped_audio.append(chunk_path)
-        else:
-            #code will try to split audio into smaller chunks between 2-11s
-            print(f"[DEBUG] Skipping chunk {i}: Duration {chunk_duration / 1000:.2f} seconds not in 2-11s range")
-    
-    return prepped_audio
+            #extract timings
+            words_info = response['alternative'][0].get('words', [])
+            if not words_info:
+                print(f"[DEBUG] No word timings found for {input_file}")
+                return []
+
+            prepped_audio = []
+            for i, word_info in enumerate(words_info):
+                start_time = word_info['startTime']  
+                end_time = word_info['endTime']      
+                chunk_duration = end_time - start_time
+
+                #convert times from 'HH:MM:SS.milliseconds' to milliseconds
+                start_ms = int(float(start_time.split('s')[0]) * 1000)
+                end_ms = int(float(end_time.split('s')[0]) * 1000)
+
+                if 2000 <= chunk_duration * 1000 <= 11000:  #ensure between 2-11s
+                    chunk_name = f"{base_filename}-{i:04d}.wav"
+                    chunk_path = os.path.join('wavs', chunk_name)
+                    print(f"[DEBUG] Saving chunk {i}: {chunk_name} (Duration: {chunk_duration:.2f} seconds)")
+                    chunk = audio[start_ms:end_ms]
+                    chunk.export(chunk_path, format="wav")
+                    prepped_audio.append(chunk_path)
+                else:
+                    print(f"[DEBUG] Skipping chunk {i}: Duration {chunk_duration:.2f} seconds not in 2-11s range")
+
+            return prepped_audio
+
+        except sr.UnknownValueError:
+            print(f"[DEBUG] Google Speech Recognition could not understand {input_file}")
+            return []
+        except sr.RequestError as e:
+            print(f"[DEBUG] Could not request results from Google Speech Recognition service; {e}")
+            return []
+
 
 def transcribe_audio(audio_file):
     """Transcribes audio using SpeechRecognition with Google Speech-to-Text."""
