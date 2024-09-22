@@ -30,25 +30,41 @@ pip install -r requirements.txt
 
 
 echo "======================================================="
-#tells user to move files in
+
 echo "Notice: Please place your .wav files in the 'input/' directory now"
+
 echo "======================================================="
+
 echo "Do you wish to automatically clean up background noise? (y/n)"
 read filter_choice
 if [ "$filter_choice" = "y" ]; then
     python3 filter.py
 else
-    echo "You can run it manually later with: python3 filter.py"
+    echo "[OK] You can run it manually later with: python3 filter.py"
 fi
+
 echo "======================================================="
+
+echo "Do you wish to split the audio files into smaller chunks? (y/n)"
+read filter_choice
+if [ "$filter_choice" = "y" ]; then
+    python3 split.py
+else
+    echo "[OK] You can run it manually later with: python3 split.py"
+fi
+
+echo "======================================================="
+
 echo "Ready to run the main.py script to generate the dataset? (y/n)"
 read run_choice
 if [ "$run_choice" = "y" ]; then
     python3 main.py
 else
-    echo "You can run it manually later with: python3 main.py"
+    echo "[OK] You can run it manually later with: python3 main.py"
 fi
+
 echo "======================================================="
+
 #deactivate venv
 deactivate
 
