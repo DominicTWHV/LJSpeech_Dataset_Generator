@@ -12,6 +12,8 @@ dataset.zip/
 ```
 _Should also be compatible with other TTS engines that uses a LJSpeech file structure for training._
 
+**metadata.csv:**
+
 ```csv
 wav_filename|transcript
 wavs/<name>_processed<index>.wav|<transcript>
