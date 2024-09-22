@@ -4,7 +4,7 @@ import pandas as pd
 import speech_recognition as sr
 import wave
 
-#create necessary directories
+#create necessary  directories
 os.makedirs('wavs', exist_ok=True)
 
 #initialize recognizer
@@ -79,7 +79,7 @@ def main():
     process_wav_files('wavs')
     zip_output()
     
-    print(f"[OK] Pipeline finished successfully!")
+    print(f"[OK] Dataset Created!")
 
 if __name__ == "__main__":
     main()
