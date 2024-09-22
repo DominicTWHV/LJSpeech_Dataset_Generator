@@ -1,86 +1,15 @@
 import os
-import io
-import wave
 import subprocess
 import pandas as pd
 import speech_recognition as sr
-from pydub import AudioSegment
-from pydub.silence import split_on_silence
+import wave
 
-#create necessary directories
+# Create necessary directories
 os.makedirs('wavs', exist_ok=True)
 os.makedirs('input', exist_ok=True)
-os.makedirs('wavs_split_temp', exist_ok=True)
-os.makedirs('wavs_split_final', exist_ok=True)
 
-
-#initialize the recognizer for sr
+# Initialize the recognizer for SpeechRecognition
 recognizer = sr.Recognizer()
-
-def split_audio(input_file, base_filename):
-    """Splits audio into chunks based on recognized words, storing them in /wavs."""
-    print(f"[DEBUG] Loading audio file: {input_file}")
-    audio = AudioSegment.from_wav(input_file)
-
-    print(f"[DEBUG] Transcribing audio to detect word boundaries...")
-    with sr.AudioFile(input_file) as source:
-        audio_data = recognizer.record(source)
-        try:
-            #get transcription without word timings
-            response = recognizer.recognize_google(audio_data)
-            print(f"[DEBUG] Transcription: {response}")
-
-            #split the transcript into words
-            words = response.split()
-            word_times = []
-            current_time = 0
-
-            #def word bounds
-            for word in words:
-                estimated_duration = len(word) * 250  # 250ms per character, change as needed
-                end_time = current_time + estimated_duration
-                word_times.append((current_time, end_time))
-                current_time = end_time
-
-            prepped_audio = []
-            current_chunk = AudioSegment.silent(duration=0)  # Start with an empty chunk
-
-            for start_ms, end_ms in word_times:
-                chunk = audio[start_ms:end_ms]
-                chunk_duration = len(chunk)
-
-                #save all chunks
-                if chunk_duration > 0:
-                    if chunk_duration <= 11000:  #save chunks up to 11 seconds
-                        prepped_audio.append(chunk)
-                    else:  #continue splitting if length > 11s
-                        while chunk_duration > 11000:
-                            part = chunk[:11000]
-                            prepped_audio.append(part)
-                            chunk = chunk[11000:]
-                            chunk_duration = len(chunk)
-                        if len(chunk) > 0:  #add remainders
-                            prepped_audio.append(chunk)
-
-            # Export the chunks
-            chunk_paths = []
-            for i, chunk in enumerate(prepped_audio):
-                if len(chunk) > 0:
-                    chunk_name = f"{base_filename}-{i:04d}.wav"
-                    chunk_path = os.path.join('wavs', chunk_name)
-                    print(f"[DEBUG] Saving chunk {i}: {chunk_name} (Duration: {len(chunk) / 1000:.2f} seconds)")
-                    chunk.export(chunk_path, format="wav")
-                    chunk_paths.append(chunk_path)
-
-            return chunk_paths
-
-        except sr.UnknownValueError:
-            print(f"[WARNING] Speech Recognition could not understand {input_file}")
-            return []
-        except sr.RequestError as e:
-            print(f"[ERROR] Could not request results from Speech Recognition service; {e}\n\nAre you connected to the internet?")
-            return []
-
 
 def transcribe_audio(audio_file):
     """Transcribes audio using SpeechRecognition with Google Speech-to-Text."""
@@ -90,7 +19,7 @@ def transcribe_audio(audio_file):
         audio_data = recognizer.record(source)
         
         try:
-            #transcript audio with speech recog
+            # Transcribe audio with speech recognition
             transcript = recognizer.recognize_google(audio_data)
             print(f"[DEBUG] Transcript: {transcript}")
         except sr.UnknownValueError:
@@ -103,7 +32,7 @@ def transcribe_audio(audio_file):
     return transcript
 
 def process_wav_files(input_dir):
-    """Processes all wav files, splits them, transcribes, and generates a CSV."""
+    """Processes all wav files, transcribes, and generates a CSV."""
     print(f"[DEBUG] Processing .wav files in directory: {input_dir}")
     metadata = []
     
@@ -111,20 +40,14 @@ def process_wav_files(input_dir):
     print(f"[DEBUG] Found {len(wav_files)} .wav files")
 
     for wav_file in wav_files:
-        base_filename = os.path.splitext(wav_file)[0]  # Strip file extension
         input_path = os.path.join(input_dir, wav_file)
         print(f"[DEBUG] Processing file: {wav_file}")
         
-        #split the audio and generate chunks
-        prepped_audio_chunks = split_audio(input_path, base_filename)
-        
-        #transcribe each chunk and add to metadata
-        for chunk_file in prepped_audio_chunks:
-            transcript = transcribe_audio(chunk_file)
-            chunk_name = os.path.basename(chunk_file)  # Get the filename for the chunk
-            metadata.append([os.path.join('wavs', chunk_name), transcript])  # Relative path for CSV
+        # Transcribe the audio and add to metadata
+        transcript = transcribe_audio(input_path)
+        metadata.append([os.path.join('wavs', wav_file), transcript])  # Relative path for CSV
     
-    #create the CSV in LJSpeech format
+    # Create the CSV in LJSpeech format
     print(f"[DEBUG] Writing metadata.csv...")
     df = pd.DataFrame(metadata, columns=["wav_filename", "transcript"])
     df.to_csv("metadata.csv", index=False)  # Save the metadata at the root
@@ -134,14 +57,13 @@ def zip_output(output_filename="dataset.zip"):
     """Zips the wavs directory and metadata.csv into the output zip file."""
     print(f"[DEBUG] Zipping the output files into {output_filename}...")
     try:
-        #create a zip file with the 'wavs' directory and 'metadata.csv'
+        # Create a zip file with the 'wavs' directory and 'metadata.csv'
         subprocess.run(['zip', '-r', output_filename, 'wavs', 'metadata.csv'], check=True)
         print(f"[DEBUG] Successfully created {output_filename}")
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] Error while zipping: {e}")
-        
-def total_audio_length(directory):
 
+def total_audio_length(directory):
     total_length = 0
     wav_files = [f for f in os.listdir(directory) if f.endswith('.wav')]
     
@@ -153,31 +75,12 @@ def total_audio_length(directory):
             
     return total_length
 
-def calculate_audio_retention():
-    original_length = total_audio_length('input')
-    processed_length = total_audio_length('wavs')
-    
-    retained_percentage = (processed_length / original_length) * 100 if original_length > 0 else 0
-    lost_percentage = 100 - retained_percentage
-    
-    print(f"[DEBUG] Original Total Length: {original_length:.2f} seconds")
-    print(f"[DEBUG] Processed Total Length: {processed_length:.2f} seconds")
-    print(f"[DEBUG] Retained Percentage: {retained_percentage:.2f}%")
-    print(f"[DEBUG] Lost Percentage: {lost_percentage:.2f}%")
-
-    if lost_percentage < 15:
-        zip_output()
-    else:
-        print(f"[ERROR] Loss percentage too high. Aborting zipping")
-
-    
 def main():
-    
     print(f"[DEBUG] Starting the audio processing pipeline...")
-    process_wav_files('input')
-    calculate_audio_retention()
+    process_wav_files('wavs')  # Changed to process from 'wavs' directory
+    zip_output()
     
     print(f"[OK] Pipeline finished successfully!")
-    
+
 if __name__ == "__main__":
     main()
