@@ -26,7 +26,7 @@ def split_audio(filename):
     for start in range(0, total_duration, max_chunk_duration):
         end = min(start + max_chunk_duration, total_duration)
         chunk = audio[start:end]
-
+        print(f"[DEBUG] Working on tempfile {temp_file.name}")
         #save the chunk to a temporary file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as temp_file:
             chunk.export(temp_file.name, format="wav")
@@ -36,7 +36,9 @@ def split_audio(filename):
             with sr.AudioFile(temp_file.name) as source:
                 audio_data = recognizer.record(source)
                 try:
+                    print(f"[DEBUG] Performing STT on {temp_file.name}")
                     recognizer.recognize_google(audio_data)
+                    print(f"[DEBUG] STT finished on {temp_file.name}")
                     chunks.append((start, end))
                 except sr.UnknownValueError:
                     continue
