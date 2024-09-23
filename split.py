@@ -8,10 +8,10 @@ import speech_recognition as sr
 input_dir = 'wavs/'
 output_dir = 'wavs/'
 
-#define max chunk duration
+#define max chunk duration, generally you want something between 2000-11000ms
 max_chunk_duration = 5000
 
-#file name pattern
+#define file name pattern to match later on
 processed_pattern = re.compile(r'^(.*)_processed(\d+)\.wav$')
 
 def split_audio(filename):
