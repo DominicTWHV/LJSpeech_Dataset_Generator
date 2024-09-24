@@ -51,6 +51,8 @@ chmod +x pipeline.sh
 
 Move all your `.wav` files into wavs/ when instructed to do so, and then follow the (y/n) prompts.
 
+Note: the sanity check script will be ran automatically at the end with no user prompting required.
+
 -----------------------------------
 
 # Post:
@@ -59,6 +61,4 @@ You should now see a zip file (`dataset.zip`) located in `output/`, that should 
 
 # Error reporting:
 
-If running the script gives you an error, please feel free to make a report under the issues tab.
-
-
+If running the script gives you an error, please feel free to make a report under the [issues](https://github.com/DominicTWHV/LJSpeech_Dataset_Generator/issues) tab.
