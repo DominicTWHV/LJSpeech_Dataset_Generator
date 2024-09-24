@@ -11,12 +11,12 @@ sudo chown -R "$USER":"$USER" wavs output
 chmod -R 755 wavs output
 
 #install dependencies
-sudo apt install -y python3 python3-venv python3-pip ffmpeg zip
+sudo apt install -y python3 python3-venv python3-pip ffmpeg zip -y
 
 #reboot?
 echo
 echo -e "\e[35m=======================================================\e[0m"
-echo -e "[OK] \e[36mSystem updated. You may need to reboot if kernel updates were applied. Reboot now? (y/n)\e[0m"
+echo -e "[OK] \e[36mDependencies installed. You may need to reboot if kernel updates were applied. Reboot now? (y/n)\e[0m"
 read reboot_choice
 if [ "$reboot_choice" = "y" ]; then
     sudo reboot
@@ -72,6 +72,7 @@ python3 sanitycheck.py
 echo
 echo -e "\e[35m=======================================================\e[0m"
 echo
+
 #deactivate venv
 deactivate
 
