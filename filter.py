@@ -7,7 +7,7 @@ import concurrent.futures
 import threading
 
 #define the input directory
-input_dir = 'input/'
+input_dir = 'wavs/'
 #lock to safely print debug messages in multithreaded environment
 print_lock = threading.Lock()
 
