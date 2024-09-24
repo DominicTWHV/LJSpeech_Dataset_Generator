@@ -20,9 +20,9 @@ wavs/<name>_processed<index>.wav|<transcript>
 wavs/<name>_processed<index>.wav|<transcript>
 ...
 ```
-You may also modify the `sep='|'` argument in line 52 to whatever seperator your TTS engine uses.
+You may also modify the `sep='|'` argument in line 56 to whatever seperator your TTS engine uses.
 
-_PiperTTS uses `|`, which is the default given here_
+_PiperTTS uses_ `|`, _which is the default given here_
 
 -----------------------------------
 
