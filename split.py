@@ -26,9 +26,9 @@ def split_audio(filename):
     for start in range(0, total_duration, max_chunk_duration):
         end = min(start + max_chunk_duration, total_duration)
         chunk = audio[start:end]
-        print(f"[DEBUG] Working on tempfile {temp_file.name}")
         #save the chunk to a temporary file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as temp_file:
+            print(f"[DEBUG] Working on tempfile {temp_file.name}")
             chunk.export(temp_file.name, format="wav")
             temp_file.seek(0)  #go back to the beginning of the file
 
