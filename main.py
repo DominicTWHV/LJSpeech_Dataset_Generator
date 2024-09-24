@@ -3,6 +3,7 @@ import subprocess
 import pandas as pd
 import speech_recognition as sr
 import wave
+import re
 
 #create necessary  directories
 os.makedirs('wavs', exist_ok=True)
@@ -42,11 +43,14 @@ def process_wav_files(input_dir):
         input_path = os.path.join(input_dir, wav_file)
         print(f"[DEBUG] Processing file: {wav_file}")
         
-        #append metadata
+        #transcribe and append for each file
         transcript = transcribe_audio(input_path)
         metadata.append([os.path.join('wavs', wav_file), transcript])
     
-    #create metadata with correct format
+    #regex match and sort filenames
+    metadata.sort(key=lambda x: int(re.search(r'processed(\d+)', x[0]).group(1)))
+
+    #create metadata file
     print(f"[DEBUG] Writing metadata.csv...")
     df = pd.DataFrame(metadata, columns=["wav_filename", "transcript"])
     df.to_csv("metadata.csv", sep='|', index=False)
