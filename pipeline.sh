@@ -65,6 +65,11 @@ else
     echo "[OK] You can run it manually later with: python3 main.py"
 fi
 echo
+echo -e "\e[35m===================Sanity Check========================\e[0m"
+echo
+#perform sanity check
+python3 sanitycheck.py
+echo
 echo -e "\e[35m=======================================================\e[0m"
 echo
 #deactivate venv
