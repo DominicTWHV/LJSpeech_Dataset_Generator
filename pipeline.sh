@@ -3,22 +3,22 @@
 #update packages
 sudo apt update && sudo apt upgrade -y
 
+#make directories
+mkdir wavs
+mkdir output
+#grant perms
+sudo chown -R "$USER":"$USER" wavs output
+chmod -R 755 wavs output
+
+#install dependencies
+sudo apt install -y python3 python3-venv python3-pip ffmpeg zip
+
 #reboot?
-echo "System updated. You may need to reboot if kernel updates were applied. Reboot now? (y/n)"
+echo "[OK] System updated. You may need to reboot if kernel updates were applied. Reboot now? (y/n)"
 read reboot_choice
 if [ "$reboot_choice" = "y" ]; then
     sudo reboot
 fi
-
-#make directories
-mkdir wavs
-
-#grant perms
-sudo chown -R "$USER":"$USER" wavs
-chmod -R 755 wavs
-
-#install dependencies
-sudo apt install -y python3 python3-venv python3-pip ffmpeg zip
 
 #venv setup
 python3 -m venv venv
@@ -67,4 +67,4 @@ echo
 #deactivate venv
 deactivate
 
-echo "[OK] Dataset Generation Complete!"
+echo "[OK] Dataset Generation Complete! You should now see a zip folder located in output/ named dataset.zip"
