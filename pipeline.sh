@@ -16,7 +16,7 @@ sudo apt install -y python3 python3-venv python3-pip ffmpeg zip
 #reboot?
 echo
 echo -e "\e[35m=======================================================\e[0m"
-echo -e "[OK] \e[46mSystem updated. You may need to reboot if kernel updates were applied. Reboot now? (y/n)\e[0m"
+echo -e "[OK] \e[36mSystem updated. You may need to reboot if kernel updates were applied. Reboot now? (y/n)\e[0m"
 read reboot_choice
 if [ "$reboot_choice" = "y" ]; then
     sudo reboot
@@ -31,14 +31,13 @@ source venv/bin/activate
 #install pip packages
 pip install -r requirements.txt
 echo
-echo
 echo -e "\e[35m=======================================================\e[0m"
 echo
 echo -e "\e[36mNotice: Please place your .wav files in the 'wavs/' directory now\e[0m"
 echo
 echo -e "\e[35m=======================================================\e[0m"
 echo
-echo "Do you wish to automatically clean up background noise? Please note this function is a little quirky. Use at your own risk. (y/n)"
+echo -e "\e[36mDo you wish to automatically clean up background noise? Please note this function is a little quirky. Use at your own risk. (y/n)\e[0m"
 read filter_choice
 if [ "$filter_choice" = "y" ]; then
     python3 filter.py
@@ -48,7 +47,7 @@ fi
 echo
 echo -e "\e[35m=======================================================\e[0m"
 echo
-echo "Do you wish to split the audio files into smaller chunks? It's recommended that you do so. (y/n)"
+echo -e "\e[36mDo you wish to split the audio files into smaller chunks? It's recommended that you do so. (y/n)\e[0m"
 read filter_choice
 if [ "$filter_choice" = "y" ]; then
     python3 split.py
@@ -58,7 +57,7 @@ fi
 echo
 echo -e "\e[35m=======================================================\e[0m"
 echo
-echo "Ready to run the generation script to generate the dataset? (y/n)"
+echo -e "e[36mReady to run the generation script to generate the dataset? (y/n)\e[0m"
 read run_choice
 if [ "$run_choice" = "y" ]; then
     python3 main.py
