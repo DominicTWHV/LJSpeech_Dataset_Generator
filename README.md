@@ -55,6 +55,10 @@ Move all your `.wav` files into wavs/ when instructed to do so, and then follow 
 
 # Post:
 
-You should now see a zip file (`dataset.zip`) located in the root directory of the project folder, that should contain all files with the standard LJSpeech layout.
+You should now see a zip file (`dataset.zip`) located in `output/`, that should contain all files with the standard LJSpeech layout.
+
+# Error reporting:
+
+If running the script gives you an error, please feel free to make a report under the issues tab.
 
 
