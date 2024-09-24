@@ -57,7 +57,7 @@ fi
 echo
 echo -e "\e[35m=======================================================\e[0m"
 echo
-echo -e "e[36mReady to run the generation script to generate the dataset? (y/n)\e[0m"
+echo -e "\e[36mReady to run the generation script to generate the dataset? (y/n)\e[0m"
 read run_choice
 if [ "$run_choice" = "y" ]; then
     python3 main.py
