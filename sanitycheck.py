@@ -37,7 +37,7 @@ def main():
     
     #check if match
     if expected_wav_count == actual_wav_count:
-        print("\033[92mSanity check success: The number of .wav files matches the expected count.\033[0m")
+        print("\033[92mSanity check success: Number of .wav files matches the number of metadata entries.\033[0m")
     else:
         print("\033[91mCritical Error: Mismatch! Expected {}, but found {} .wav files.\033[0m".format(expected_wav_count, actual_wav_count))
         print("Please report this issue at: https://github.com/DominicTWHV/LJSpeech_Dataset_Generator/issues")
