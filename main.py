@@ -52,7 +52,7 @@ def process_wav_files(input_dir):
     df.to_csv("metadata.csv", sep='|', index=False)
     print(f"[DEBUG] metadata.csv generated successfully")
 
-def zip_output(output_filename="dataset.zip"):
+def zip_output(output_filename="output/dataset.zip"):
     """Zips the wavs directory and metadata.csv into the output zip file."""
     print(f"[DEBUG] Zipping the output files into {output_filename}...")
     try:
