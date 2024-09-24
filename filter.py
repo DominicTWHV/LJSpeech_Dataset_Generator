@@ -60,7 +60,7 @@ def process_single_audio_file(file):
     #load the audio file
     audio_data, sample_rate = librosa.load(file_path, sr=None)
     with print_lock:
-        print(f"[DEBUG]: Processing {file_path}.")
+        print(f"[DEBUG] Processing {file_path}.")
 
     #apply dynamic noise reduction
     reduced_noise = apply_dynamic_noise_reduction(audio_data, sample_rate)
@@ -88,7 +88,7 @@ def process_audio_files():
         concurrent.futures.wait(futures)
 
     with print_lock:
-        print(f"[DEBUG]: Processed and cleaned {len(files)} files.")
+        print(f"[DEBUG] Processed and cleaned {len(files)} files.")
 
 if __name__ == '__main__':
     process_audio_files()
