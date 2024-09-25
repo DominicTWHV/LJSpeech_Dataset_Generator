@@ -8,7 +8,7 @@ import speech_recognition as sr
 input_dir = 'wavs/'
 output_dir = 'wavs/'
 
-#define max chunk duration, generally you want something between 2000-11000ms
+#define max chunk duration, generally you want something between 2000-11000ms, 5000ms would be a good balance generally
 max_chunk_duration = 5000
 
 #define file name pattern to match later on
