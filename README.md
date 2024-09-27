@@ -63,7 +63,7 @@ You should now see a zip file (`dataset.zip`) located in `output/`, that should 
 
 # Error reporting:
 
-If sanity check fails, please make sure your audio is clear, as that could indicate one or more chunks does NOT contain any transcript. You should also be able to tell which one it is by looking at the print lines during transcription. (Depending on which error it gives, the error you are looking for is `Sanity check success: Number of .wav files matches the number of metadata entries.`
+If sanity check fails, please make sure your audio is clear, as that could indicate one or more chunks does NOT contain any transcript. You should also be able to tell which one it is by looking at the print lines during transcription. (Depending on which error it gives, the error you are looking for is `Critical Error: Mismatch! Expected <num>, but found <num> .wav files.`
 
 For other errors (less common), check if the script has permission to generate files, or if you/background script had removed the generated file(s).
 
