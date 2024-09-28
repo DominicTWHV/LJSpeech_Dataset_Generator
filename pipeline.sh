@@ -78,11 +78,5 @@ deactivate
 
 if [ -f "output/dataset.zip" ]; then
     echo -e "[OK] \e[32mDataset Generation Complete! You should now see a zip folder located in output/ named dataset.zip\e[0m"
-else
-    echo -e "\e[31m=======================================================\e[0m"
-    echo -e "[ERROR] \e[31mDataset generation failed! The expected file output/dataset.zip does not exist.\e[0m"
-    echo
-    echo "[ERROR] \e[31mConsider making an issue thread at https://github.com/DominicTWHV/LJSpeech_Dataset_Generator/issues !\e[0m"
-    echo -e "\e[31m=======================================================\e[0m"
 fi
 
