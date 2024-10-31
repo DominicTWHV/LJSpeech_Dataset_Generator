@@ -30,7 +30,12 @@ _PiperTTS uses_ `|`, _which is the default given here_
 
 # Setup:
 
-Script tested on Ubuntu Server 22.04 LTS with python version `3.10.12`
+Script tested on:
+
+Ubuntu Server 22.04 LTS with python version `3.10.12`
+Ubuntu Desktop 24.04 LTS with python version `3.12.3`
+
+Should also be fully compatible with Debian based systems.
 
 **Clone repository:**
 
@@ -60,6 +65,18 @@ Note: the sanity check script will be ran automatically at the end with no user 
 # Post:
 
 You should now see a zip file (`dataset.zip`) located in `output/`, that should contain all files with the standard LJSpeech layout.
+
+You are free to move `dataset.zip` into the input directory of piper (or other training platform) for pre-processing.
+
+```sh
+mv /output/dataset.zip /path/to/training/dir/for/pre-processing
+```
+
+And unzip it
+
+```sh
+unzip dataset.zip
+```
 
 # Error reporting:
 
