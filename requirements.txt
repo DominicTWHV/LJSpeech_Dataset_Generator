@@ -1,6 +1,6 @@
 pydub==0.25.1
 SpeechRecognition==3.10.4
 pandas==2.2.3
-noisereduce==3.0.2
+noisereduce==3.0.3
 librosa==0.10.2.post1
 soundfile==0.12.1
