@@ -2,6 +2,7 @@ import os
 import re
 import tempfile
 from pydub import AudioSegment
+from pydub.silence import split_on_silence
 import speech_recognition as sr
 
 #directories
@@ -20,16 +21,21 @@ def split_audio(filename):
 
     #total audio duration
     total_duration = len(audio)
-
     #split
+    raw_chunks = split_on_silence(
+        audio,
+        min_silence_len=300,
+        silence_thresh=audio.dBFS - 16,
+        keep_silence=150
+    )
+
     chunks = []
-    for start in range(0, total_duration, max_chunk_duration):
-        end = min(start + max_chunk_duration, total_duration)
-        chunk = audio[start:end]
+    current_pos = 0
+    for raw_chunk in raw_chunks:
         #save the chunk to a temporary file
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as temp_file:
             print(f"[DEBUG] Working on tempfile {temp_file.name}")
-            chunk.export(temp_file.name, format="wav")
+            raw_chunk.export(temp_file.name, format="wav")
             temp_file.seek(0)  #go back to the beginning of the file
 
             #recognize the chunk to ensure words don't get cut
@@ -39,8 +45,22 @@ def split_audio(filename):
                     print(f"[DEBUG] Performing STT on {temp_file.name}")
                     recognizer.recognize_google(audio_data)
                     print(f"[DEBUG] STT finished on {temp_file.name}")
-                    chunks.append((start, end))
+
+                    chunk_length = len(raw_chunk)
+                    end_pos = current_pos + chunk_length
+                    if chunk_length > max_chunk_duration:
+                        # further manual chunking if needed
+                        sub_start = 0
+                        while sub_start < chunk_length:
+                            sub_end = min(sub_start + max_chunk_duration, chunk_length)
+                            chunks.append((current_pos + sub_start, current_pos + sub_end))
+                            sub_start += max_chunk_duration
+                        current_pos = end_pos
+                    else:
+                        chunks.append((current_pos, end_pos))
+                        current_pos = end_pos
                 except sr.UnknownValueError:
+                    pass
                     continue
 
     #export
