@@ -39,12 +39,12 @@ class LJSpeechDatasetUI:
                 meta_map = {os.path.basename(r["filename"]): r["transcript"] for _, r in self.metadata.iterrows()}
             else:
                 meta_map = {}
-            # Debug statements
-            # print("Audio files:", audio_files)
-            # print("Metadata filenames:", self.metadata["filename"].tolist())
-            # print("Meta map:", meta_map)
+            #Debug statements
+            #print("Audio files:", audio_files)
+            #print("Metadata filenames:", self.metadata["filename"].tolist())
+            #print("Meta map:", meta_map)
             data = [(os.path.join(self.dataset_dir, af), meta_map.get(af, "")) for af in audio_files]
-            # print("Data:", data)
+            #print("Data:", data)
             return data
         except Exception as e:
             return []
@@ -57,13 +57,12 @@ class LJSpeechDatasetUI:
         else:
             new_row = pd.DataFrame({"filename": [base_name], "transcript": [new_transcript]})
             self.metadata = pd.concat([self.metadata, new_row], ignore_index=True)
-        # Save without header to maintain consistency
         self.metadata.to_csv(self.metadata_file, sep=self.separator if self.separator else '|', index=False, header=False)
         return f"Transcript for {base_name} updated: {new_transcript}"
 
     def create_interface(self):
-        # Constants
-        items_per_page = 10  # Number of items to display per page
+        #constants
+        items_per_page = 10  #number of items to display per page
 
         def save_uploaded_files(files):
             if not os.path.exists(self.dataset_dir):
@@ -72,10 +71,10 @@ class LJSpeechDatasetUI:
                 try:
                     file_path = os.path.join(self.dataset_dir, file.name)
                     with open(file_path, "wb") as f:
-                        f.write(file)
+                        f.write(file.read())
                 except Exception as e:
                     return f"Error: {e}"
-            return f"{len(files)} file(s) uploaded suc1cessfully."
+            return f"{len(files)} file(s) uploaded successfully."
 
         def refresh_data(current_page):
             self.metadata = self._load_metadata()
