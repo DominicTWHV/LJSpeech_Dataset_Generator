@@ -7,6 +7,8 @@ import speech_recognition as sr
 import sys
 from io import StringIO
 
+from functions.helper.run_san import check_wav_files
+
 class AudioSplitter:
     def __init__(self, input_dir='wavs/', output_dir='wavs/'):
         self.input_dir = input_dir
@@ -78,6 +80,8 @@ class AudioSplitter:
         return logs
     
     def gradio_run(self, min_chunk_duration, max_chunk_duration):
+        if not check_wav_files():
+            return "ERROR: No .wav files found in the input directory. Please upload them and try again."
+        
         self.process_directory(min_chunk_duration, max_chunk_duration)
-        print("============================END OF SPLITTING============================")
         return self.get_logs()

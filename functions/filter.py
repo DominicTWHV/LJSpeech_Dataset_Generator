@@ -8,6 +8,8 @@ import threading
 import sys
 from io import StringIO
 
+from functions.helper.run_san import check_wav_files
+
 class NoiseReducer:
     def __init__(self, input_dir='wavs/'):
         self.input_dir = input_dir
@@ -77,5 +79,8 @@ class NoiseReducer:
         return logs
     
     def gradio_run(self, frame_length, hop_length, silence_threshold=0.1, prop_decrease_noisy=1.0, prop_decrease_normal=0.5):
+        if not check_wav_files():
+            return "ERROR: No .wav files found in the input directory. Please upload them and try again."
+        
         self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
         return self.get_logs()

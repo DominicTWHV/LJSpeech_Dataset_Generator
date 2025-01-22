@@ -7,6 +7,8 @@ import subprocess
 import wave
 import speech_recognition as sr
 
+from functions.helper.run_san import check_wav_files
+
 class MainProcess:
     def __init__(self):
         self.recognizer = sr.Recognizer()
@@ -75,6 +77,9 @@ class MainProcess:
         return total_length
 
     def gradio_run(self, seperator):
+        if not check_wav_files():
+            return "ERROR: No .wav files found in the input directory. Please upload them and try again."
+        
         self.process_wav_files('wavs', seperator)
         return self.get_logs()
 

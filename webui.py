@@ -142,10 +142,15 @@ class LJSpeechDatasetUI:
             return inner
         
         def update_file_list():
-                    if not os.path.exists(self.dataset_dir):
-                        return ""
-                    audio_files = [f for f in os.listdir(self.dataset_dir) if f.endswith(".wav")]
-                    return "\n".join(audio_files)
+            if not os.path.exists(self.dataset_dir):
+                return ""
+            audio_files = [f for f in os.listdir(self.dataset_dir) if f.endswith(".wav")]
+            return "\n".join(audio_files)
+        
+        def handle_upload(file_paths):
+                    status = save_uploaded_files(file_paths)
+                    file_list_content = update_file_list()
+                    return status, file_list_content
 
         with gr.Blocks(title="LJSpeech Dataset Generator", theme=gr.themes.Ocean()) as app:
             gr.Markdown("<div style='text-align: center;'><h1>LJSpeech Dataset Generator</h1></div>")
@@ -158,16 +163,19 @@ class LJSpeechDatasetUI:
             with gr.Tab("File Upload"):
                 with gr.Row():
                     with gr.Column():
+                        gr.Markdown("**Upload your .wav files here for pre-processing.**")
                         upload_audio = gr.File(label="Upload .wav files", file_types=["audio"], file_count="multiple", type="filepath")
-                        upload_status = gr.Textbox(label="Upload Status", interactive=False)
-
+                        
                     with gr.Column():
-                        file_list = gr.Textbox(label="Uploaded Files", lines=10, interactive=False)
+                        gr.Markdown("**Uploaded files will be displayed here.**")
+                        file_list = gr.Textbox(label="Uploaded Files", lines=9, interactive=False)
 
-                upload_audio.upload(save_uploaded_files, inputs=upload_audio, outputs=upload_status)
-                upload_audio.upload(update_file_list, inputs=[], outputs=file_list)
+                with gr.Row():
+                    upload_status = gr.Textbox(label="Output", interactive=False)
 
-            with gr.Tab("Preprocessing"):
+                upload_audio.upload(handle_upload, inputs=upload_audio, outputs=[upload_status, file_list])
+
+            with gr.Tab("Pre-Processing"):
                 with gr.Row():
                     with gr.Column():
                         pp_filter = gr.Button("Step 1: Preprocess - Filter Background Noise", variant="stop")
@@ -180,7 +188,7 @@ class LJSpeechDatasetUI:
                     with gr.Column():
                         pp_main = gr.Button("Step 3: Preprocess - Auto Transcript", variant="primary")
                         gr.Markdown("The final step or preprocessing. This will generate the metadata.csv file.")
-            
+
                 with gr.Row():
 
                     with gr.Column():
