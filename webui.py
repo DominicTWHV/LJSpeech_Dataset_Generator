@@ -17,7 +17,7 @@ class LJSpeechDatasetUI:
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
             #read csv
-            df = pd.read_csv(self.metadata_file,sep="|",header=None,names=["wav_filename", "transcript", "normalized_transcript"],dtype=str,)
+            df = pd.read_csv(self.metadata_file, sep=self.separator if self.separator else '|', header=None,names=["wav_filename", "transcript", "normalized_transcript"], dtype=str,)
             df["filename"] = df["wav_filename"].astype(str)
             df = df[["filename", "transcript"]]
             return df
@@ -58,7 +58,7 @@ class LJSpeechDatasetUI:
             new_row = pd.DataFrame({"filename": [base_name], "transcript": [new_transcript]})
             self.metadata = pd.concat([self.metadata, new_row], ignore_index=True)
         # Save without header to maintain consistency
-        self.metadata.to_csv(self.metadata_file, sep="|", index=False, header=False)
+        self.metadata.to_csv(self.metadata_file, sep=self.separator if self.separator else '|', index=False, header=False)
         return f"Transcript for {base_name} updated: {new_transcript}"
 
     def create_interface(self):
@@ -144,13 +144,13 @@ class LJSpeechDatasetUI:
                     pp_chunk = gr.Button("Step 2: Preprocess - Chunking")
                     pp_main = gr.Button("Step 3: Preprocess - Auto Transcript")
                     
-                    seperator = gr.Textbox(label="Separator", interactive=True)
+                    self.separator = gr.Textbox(label="Separator", value="|", interactive=True)
             
                 pp_status = gr.Textbox(label="Preprocess Status", interactive=False)
             
                 pp_filter.click(noise_reducer.gradio_run, inputs=[], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[], outputs=pp_status)
-                pp_main.click(main_process.gradio_run, inputs=[seperator], outputs=pp_status)
+                pp_main.click(main_process.gradio_run, inputs=[self.separator], outputs=pp_status)
 
             with gr.Tab("Transcript Editing"):
                 components = []
