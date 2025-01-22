@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#update packages
-sudo apt update && sudo apt upgrade -y
-
 #make directories
 mkdir wavs
 mkdir output
@@ -10,8 +7,17 @@ mkdir output
 sudo chown -R "$USER":"$USER" wavs output
 chmod -R 755 wavs output
 
-#install dependencies
-sudo apt install -y python3 python3-venv python3-pip ffmpeg zip -y
+# Check if dependencies are installed
+if ! command -v python3 &>/dev/null || \
+    ! dpkg -s python3-venv &>/dev/null || \
+    ! command -v pip3 &>/dev/null || \
+    ! command -v ffmpeg &>/dev/null || \
+    ! command -v zip &>/dev/null; then
+     sudo apt update
+     sudo apt install -y python3 python3-venv python3-pip ffmpeg zip
+else
+     echo "[OK] Dependencies already installed."
+fi
 
 #reboot?
 echo
