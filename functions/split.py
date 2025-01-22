@@ -8,11 +8,9 @@ import sys
 from io import StringIO
 
 class AudioSplitter:
-    def __init__(self, input_dir='wavs/', output_dir='wavs/', max_chunk_duration=8000, min_chunk_duration=4000):
+    def __init__(self, input_dir='wavs/', output_dir='wavs/'):
         self.input_dir = input_dir
         self.output_dir = output_dir
-        self.max_chunk = max_chunk_duration
-        self.min_chunk = min_chunk_duration
         self.processed_pattern = re.compile(r'^(.*)_processed(\d+)\.wav$')
         self.recognizer = sr.Recognizer()
         
@@ -21,13 +19,13 @@ class AudioSplitter:
         self.original_stdout = sys.stdout
         sys.stdout = self.log_stream  # Redirect print statements to log_stream
 
-    def split_audio(self, filepath):
+    def split_audio(self, filepath, min_chunk_duration, max_chunk_duration):
         audio = AudioSegment.from_wav(filepath)
         total_duration = len(audio)
-        full_chunks = total_duration // self.max_chunk
-        leftover = total_duration % self.max_chunk
+        full_chunks = total_duration // max_chunk_duration
+        leftover = total_duration % max_chunk_duration
 
-        if leftover < self.min_chunk and full_chunks > 0:
+        if leftover < min_chunk_duration and full_chunks > 0:
             num_chunks = full_chunks
         else:
             num_chunks = full_chunks + 1 if leftover else full_chunks
@@ -55,7 +53,7 @@ class AudioSplitter:
                 except sr.UnknownValueError:
                     pass
 
-    def process_directory(self):
+    def process_directory(self, min_chunk_duration, max_chunk_duration):
         file_count = len([f for f in os.listdir(self.input_dir) if f.endswith('.wav') and not self.processed_pattern.match(f)])
         print(f"[DEBUG] Starting to process: {file_count} files.")
 
@@ -63,7 +61,7 @@ class AudioSplitter:
             filepath = os.path.join(self.input_dir, filename)
             if filename.endswith('.wav') and not self.processed_pattern.match(filename):
                 print(f"[DEBUG] Splitting {filename}")
-                self.split_audio(filepath)
+                self.split_audio(filepath, min_chunk_duration, max_chunk_duration)
 
         for filename in os.listdir(self.input_dir):
             filepath = os.path.join(self.input_dir, filename)
@@ -79,7 +77,7 @@ class AudioSplitter:
         self.log_stream.truncate(0)
         return logs
     
-    def gradio_run(self):
-        self.process_directory()
+    def gradio_run(self, min_chunk_duration, max_chunk_duration):
+        self.process_directory(min_chunk_duration, max_chunk_duration)
         print("============================END OF SPLITTING============================")
         return self.get_logs()

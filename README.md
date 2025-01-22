@@ -20,11 +20,6 @@ wavs/<name>_processed<index>.wav|<transcript>
 wavs/<name>_processed<index>.wav|<transcript>
 ...
 ```
-You may also modify the `sep='|'` argument in line 56 (main.py) to whatever seperator your TTS engine uses.
-
-You may also modify the chunk length in split.py if your TTS engine requires a specific chunk duration.
-
-_PiperTTS uses_ `|`, _which is the default given here_
 
 -----------------------------------
 

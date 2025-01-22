@@ -14,6 +14,8 @@ class LJSpeechDatasetUI:
         self.dataset_dir = dataset_dir
         self.metadata_file = metadata_file
         self.separator = '|'
+        self.min_duration = 4000 #both in miliseconds
+        self.max_duration = 10000
         self.metadata = self._load_metadata()
 
     def _load_metadata(self):
@@ -133,7 +135,7 @@ class LJSpeechDatasetUI:
             return inner
 
         with gr.Blocks(title="LJSpeech Dataset Generator", theme=gr.themes.Ocean()) as app:
-            gr.Markdown("## LJSpeech Dataset Generator")
+            gr.Markdown("# LJSpeech Dataset Generator")
 
             noise_reducer = NoiseReducer()
             splitter = AudioSplitter()
@@ -153,22 +155,49 @@ class LJSpeechDatasetUI:
                     pp_chunk = gr.Button("Step 2: Preprocess - Chunking", variant="primary")
                     pp_main = gr.Button("Step 3: Preprocess - Auto Transcript", variant="primary")
                 
-                with gr.Column():
-                    separator_val = gr.Textbox(label="Separator", value="|", interactive=True)
-                    save_sep = gr.Button("Save Separator", variant="stop")
-                    gr.Markdown("Note: You can configure the separator here. Leave it on default if you do not know what this is. You should only change this if your TTS engine requires a specific separator.")
+                with gr.Row():
+                    with gr.Column():
+                        separator_val = gr.Textbox(label="Separator", value="|", interactive=True)
+                        save_sep = gr.Button("Save Separator", variant="secondary")
+                        gr.Markdown("Note: You can configure the separator here. Leave it on default if you do not know what this is. You should only change this if your TTS engine requires a specific separator.")
             
-                pp_status = gr.Textbox(label="Preprocess Status", lines=20, interactive=False)
+                    with gr.Column():
+                        min_duration_slider = gr.Slider(
+                            label="Minimum Chunking Duration (ms)",
+                            minimum=1000,
+                            maximum=10000,
+                            step=500,
+                            value=self.min_duration
+                        )
+
+                        max_duration_slider = gr.Slider(
+                            label="Maximum Chunking Duration (ms)",
+                            minimum=1000,
+                            maximum=20000,
+                            step=500,
+                            value=self.max_duration
+                        )
+
+                        save_dur = gr.Button("Save Duration", variant="secondary")
+                        gr.Markdown("Used to adjust the min/max duration (in ms) when chunking, leave default if you don't know what this is.")
+
+                pp_status = gr.Textbox(label="Preprocess Status", lines=10, interactive=False)
             
                 pp_filter.click(noise_reducer.gradio_run, inputs=[], outputs=pp_status)
-                pp_chunk.click(splitter.gradio_run, inputs=[], outputs=pp_status)
+                pp_chunk.click(splitter.gradio_run, inputs=[min_duration_slider, max_duration_slider], outputs=pp_status)
                 pp_main.click(main_process.gradio_run, inputs=[separator_val], outputs=pp_status)
     
                 def update_separator(new_sep):
                     self.separator = new_sep
                     return f"Separator updated to: {new_sep}"
+                
+                def update_duration(min_duration, max_duration):
+                    self.min_duration = min_duration
+                    self.max_duration = max_duration
+                    return f"Duration updated to: {min_duration}ms (min) and {max_duration}ms (max)"
     
-                save_sep.click(update_separator, inputs=separator_val, outputs=pp_status)
+                save_sep.click(update_separator, inputs=[separator_val], outputs=pp_status)
+                save_dur.click(update_duration, inputs=[min_duration_slider, max_duration_slider], outputs=pp_status)
 
             with gr.Tab("Transcript Editing"):
                 components = []
