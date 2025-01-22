@@ -14,32 +14,27 @@ class LJSpeechDatasetUI:
         self.dataset_dir = dataset_dir
         self.metadata_file = metadata_file
         self.metadata = self._load_metadata()
-        self.separator = '|'  # Ensure separator is initialized
 
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
-            # Read CSV
-            df = pd.read_csv(
-                self.metadata_file,
-                sep=self.separator,
-                header=None,
-                names=["wav_filename", "transcript", "normalized_transcript"],
-                dtype=str,
-            )
+            #read csv
+            df = pd.read_csv(self.metadata_file, sep=self.separator if self.separator else '|', header=None,names=["wav_filename", "transcript", "normalized_transcript"], dtype=str,)
             df["filename"] = df["wav_filename"].astype(str)
             df = df[["filename", "transcript"]]
             return df
         else:
+            # Return an empty DataFrame with specified columns
             df = pd.DataFrame(columns=["filename", "transcript"])
             return df
 
     def load_data(self):
         try:
-            if not os.listdir(self.dataset_dir):
+            if not os.path.exists(self.dataset_dir):
+                # Dataset directory does not exist
                 return []
-            
             audio_files = [f for f in os.listdir(self.dataset_dir) if f.endswith(".wav")]
             if len(audio_files) == 0:
+                # No audio files found
                 return []
             if isinstance(self.metadata, pd.DataFrame) and not self.metadata.empty:
                 meta_map = {os.path.basename(r["filename"]): r["transcript"] for _, r in self.metadata.iterrows()}
@@ -75,16 +70,6 @@ class LJSpeechDatasetUI:
                 os.makedirs(self.dataset_dir)
 
             try:
-                duplicate_files = []
-                for temp_file_path in file_paths:
-                    file_name = os.path.basename(temp_file_path)
-                    dest_file_path = os.path.join(self.dataset_dir, file_name)
-                    if os.path.exists(dest_file_path):
-                        duplicate_files.append(file_name)
-                
-                if duplicate_files:
-                    return "Error: The following file(s) already exist:\n" + "\n ".join(duplicate_files)
-
                 for temp_file_path in file_paths:
                     file_name = os.path.basename(temp_file_path)
                     
@@ -100,10 +85,7 @@ class LJSpeechDatasetUI:
 
         def refresh_data(current_page):
             self.metadata = self._load_metadata()
-            print(f"Metadata loaded: {self.metadata}")
             data = self.load_data()
-            print(f"Data loaded: {data}")
-
             total_items = len(data)
             total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
 
@@ -149,8 +131,7 @@ class LJSpeechDatasetUI:
                 return result
             return inner
 
-        with gr.Blocks(title="LJSpeech Dataset Generator", theme=gr.themes.Ocean()) as app:
-
+        with gr.Blocks() as app:
             gr.Markdown("## LJSpeech Dataset Generator")
 
             noise_reducer = NoiseReducer()
@@ -170,14 +151,14 @@ class LJSpeechDatasetUI:
                     pp_main = gr.Button("Step 3: Preprocess - Auto Transcript")
                 
                 with gr.Column():
-                    self.separator_input = gr.Textbox(label="Separator", value="|", interactive=True)
+                    self.separator = gr.Textbox(label="Separator", value="|", interactive=True)
                     gr.Markdown("Note: You can configure the seperator here. Leave it on default if you do not know what this is. You should only change this if your TTS engine requires a specific seperator.")
             
                 pp_status = gr.Textbox(label="Preprocess Status", lines=20, interactive=False)
             
                 pp_filter.click(noise_reducer.gradio_run, inputs=[], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[], outputs=pp_status)
-                pp_main.click(main_process.gradio_run, inputs=[self.separator_input], outputs=pp_status)
+                pp_main.click(main_process.gradio_run, inputs=[self.separator], outputs=pp_status)
 
             with gr.Tab("Transcript Editing"):
                 components = []
@@ -234,7 +215,7 @@ class LJSpeechDatasetUI:
 
             gr.Markdown("Is there an issue? Feel free to open an issue on my [GitHub](https://github.com/DominicTWHV/LJSpeech_Dataset_Generator)")
         return app
-    
+
 if __name__ == "__main__":
     ui = LJSpeechDatasetUI(dataset_dir="wavs", metadata_file="metadata.csv")
     app = ui.create_interface()
