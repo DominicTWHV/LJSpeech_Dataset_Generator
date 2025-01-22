@@ -81,4 +81,5 @@ class AudioSplitter:
     
     def gradio_run(self):
         self.process_directory()
-        return self.get_logs
+        print("============================END OF SPLITTING============================")
+        return self.get_logs()

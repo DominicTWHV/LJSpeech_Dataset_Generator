@@ -14,27 +14,32 @@ class LJSpeechDatasetUI:
         self.dataset_dir = dataset_dir
         self.metadata_file = metadata_file
         self.metadata = self._load_metadata()
+        self.separator = '|'  # Ensure separator is initialized
 
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
-            #read csv
-            df = pd.read_csv(self.metadata_file, sep=self.separator if self.separator else '|', header=None,names=["wav_filename", "transcript", "normalized_transcript"], dtype=str,)
+            # Read CSV
+            df = pd.read_csv(
+                self.metadata_file,
+                sep=self.separator,
+                header=None,
+                names=["wav_filename", "transcript", "normalized_transcript"],
+                dtype=str,
+            )
             df["filename"] = df["wav_filename"].astype(str)
             df = df[["filename", "transcript"]]
             return df
         else:
-            # Return an empty DataFrame with specified columns
             df = pd.DataFrame(columns=["filename", "transcript"])
             return df
 
     def load_data(self):
         try:
-            if not os.path.exists(self.dataset_dir):
-                # Dataset directory does not exist
+            if not os.listdir(self.dataset_dir):
                 return []
+            
             audio_files = [f for f in os.listdir(self.dataset_dir) if f.endswith(".wav")]
             if len(audio_files) == 0:
-                # No audio files found
                 return []
             if isinstance(self.metadata, pd.DataFrame) and not self.metadata.empty:
                 meta_map = {os.path.basename(r["filename"]): r["transcript"] for _, r in self.metadata.iterrows()}
@@ -95,7 +100,10 @@ class LJSpeechDatasetUI:
 
         def refresh_data(current_page):
             self.metadata = self._load_metadata()
+            print(f"Metadata loaded: {self.metadata}")
             data = self.load_data()
+            print(f"Data loaded: {data}")
+
             total_items = len(data)
             total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
 
@@ -162,14 +170,14 @@ class LJSpeechDatasetUI:
                     pp_main = gr.Button("Step 3: Preprocess - Auto Transcript")
                 
                 with gr.Column():
-                    self.separator = gr.Textbox(label="Separator", value="|", interactive=True)
+                    self.separator_input = gr.Textbox(label="Separator", value="|", interactive=True)
                     gr.Markdown("Note: You can configure the seperator here. Leave it on default if you do not know what this is. You should only change this if your TTS engine requires a specific seperator.")
             
                 pp_status = gr.Textbox(label="Preprocess Status", lines=20, interactive=False)
             
                 pp_filter.click(noise_reducer.gradio_run, inputs=[], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[], outputs=pp_status)
-                pp_main.click(main_process.gradio_run, inputs=[self.separator], outputs=pp_status)
+                pp_main.click(main_process.gradio_run, inputs=[self.separator_input], outputs=pp_status)
 
             with gr.Tab("Transcript Editing"):
                 components = []
