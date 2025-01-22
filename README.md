@@ -37,6 +37,8 @@ Ubuntu Desktop 24.04 LTS with python version `3.12.3`
 
 Should also be fully compatible with Debian based systems.
 
+**DOES NOT WORK ON WINDOWS**
+
 **Clone repository:**
 
 ```
