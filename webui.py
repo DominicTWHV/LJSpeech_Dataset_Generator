@@ -16,8 +16,14 @@ class LJSpeechDatasetUI:
 
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
-            # Read the CSV with header row
-            df = pd.read_csv(self.metadata_file, sep="|", header=0, dtype=str)
+            #read csv
+            df = pd.read_csv(
+                self.metadata_file,
+                sep="|",
+                header=None,
+                names=["wav_filename", "transcript", "normalized_transcript"],
+                dtype=str,
+            )
             df["filename"] = df["wav_filename"].astype(str)
             df = df[["filename", "transcript"]]
             return df
@@ -57,7 +63,8 @@ class LJSpeechDatasetUI:
         else:
             new_row = pd.DataFrame({"filename": [base_name], "transcript": [new_transcript]})
             self.metadata = pd.concat([self.metadata, new_row], ignore_index=True)
-        self.metadata.to_csv(self.metadata_file, sep="|", index=False, header=True)
+        # Save without header to maintain consistency
+        self.metadata.to_csv(self.metadata_file, sep="|", index=False, header=False)
         return f"Transcript for {base_name} updated: {new_transcript}"
 
     def create_interface(self):
@@ -77,13 +84,11 @@ class LJSpeechDatasetUI:
             return f"{len(files)} file(s) uploaded successfully."
 
         def refresh_data(current_page):
-            # Reload metadata
             self.metadata = self._load_metadata()
             data = self.load_data()
             total_items = len(data)
             total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
 
-            # Adjust current_page if needed
             if current_page < 1:
                 current_page = 1
             elif current_page > total_pages:
@@ -112,7 +117,7 @@ class LJSpeechDatasetUI:
                     file_paths.append(None)
                 updates.extend([audio_update, transcript_update, save_btn_update, status_box_update])
 
-            # Update the page label
+            #update page box
             page_label_update = f"Page {current_page} of {total_pages}"
 
             return updates + [file_paths, current_page, page_label_update]
@@ -154,61 +159,44 @@ class LJSpeechDatasetUI:
             with gr.Tab("Transcript Editing"):
                 components = []
 
-                # State to store file paths and current page
+                #states
                 file_states = gr.State(value=[None]*items_per_page)
                 current_page_state = gr.State(value=1)
                 page_label_state = gr.State(value="Page 1 of 1")
 
-                # Define the Refresh Data button and navigation buttons
+                #define elements on top
                 with gr.Row():
                     refresh_btn = gr.Button("Refresh Data")
                     previous_btn = gr.Button("Previous")
                     next_btn = gr.Button("Next")
                     page_label = gr.Markdown("Page 1 of 1")
 
-                # Components for audio files and transcripts
+                #parts
                 for i in range(items_per_page):
                     with gr.Row():
                         audio_component = gr.Audio(visible=False)
                         transcript_box = gr.Textbox(visible=False, label="Transcript", lines=3, interactive=True)
-                        save_btn = gr.Button("Save", visible=False)
+                        save_btn = gr.Button("Update", visible=False)
                         status_box = gr.Textbox(visible=False, label="Status", interactive=False)
                         components.append((audio_component, transcript_box, save_btn, status_box))
 
-                # Set outputs to all components, file_states, current_page_state, and page_label
+                #set outputs to all components, file_states, current_page_state, page_label
                 outputs = []
                 for component in components:
                     outputs.extend(component)
                 outputs.extend([file_states, current_page_state, page_label])
 
-                # Connect the refresh button
-                refresh_btn.click(
-                    fn=lambda: refresh_data(1),
-                    inputs=[],
-                    outputs=outputs
-                )
+                refresh_btn.click(fn=lambda: refresh_data(1),inputs=[],outputs=outputs) #refresh button
 
-                # Previous button click
-                previous_btn.click(
-                    fn=lambda current_page: refresh_data(current_page - 1),
-                    inputs=[current_page_state],
-                    outputs=outputs
-                )
+                #prev page
+                previous_btn.click(fn=lambda current_page: refresh_data(current_page - 1),inputs=[current_page_state],outputs=outputs)
 
-                # Next button click
-                next_btn.click(
-                    fn=lambda current_page: refresh_data(current_page + 1),
-                    inputs=[current_page_state],
-                    outputs=outputs
-                )
+                #next page
+                next_btn.click(fn=lambda current_page: refresh_data(current_page + 1),inputs=[current_page_state],outputs=outputs)
 
-                # Connect the save buttons
+                #update transcript
                 for index, (audio_component, transcript_box, save_btn, status_box) in enumerate(components):
-                    save_btn.click(
-                        save_transcript(index),
-                        inputs=[transcript_box, file_states],
-                        outputs=status_box
-                    )
+                    save_btn.click(save_transcript(index),inputs=[transcript_box, file_states],outputs=status_box)
 
             with gr.Tab("Post Processing"):
                 with gr.Row():
