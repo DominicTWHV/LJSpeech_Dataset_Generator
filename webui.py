@@ -16,30 +16,115 @@ class LJSpeechDatasetUI:
 
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
-            df = pd.read_csv(self.metadata_file, sep="|", header=None, names=["filename", "transcript"], dtype=str)
-            df["filename"] = df["filename"].astype(str)
+            # Read the CSV with header row
+            df = pd.read_csv(self.metadata_file, sep="|", header=0, dtype=str)
+            df["filename"] = df["wav_filename"].astype(str)
+            df = df[["filename", "transcript"]]
             return df
-        raise FileNotFoundError(f"Metadata file '{self.metadata_file}' not found.")
+        else:
+            # Return an empty DataFrame with specified columns
+            df = pd.DataFrame(columns=["filename", "transcript"])
+            return df
 
     def load_data(self):
-        audio_files = [f for f in os.listdir(self.dataset_dir) if f.endswith(".wav")]
-        meta_map = {os.path.basename(r["filename"]): r["transcript"] for _, r in self.metadata.iterrows()}
-        return [(os.path.join(self.dataset_dir, af), meta_map.get(af, "")) for af in audio_files]
+        try:
+            if not os.path.exists(self.dataset_dir):
+                # Dataset directory does not exist
+                return []
+            audio_files = [f for f in os.listdir(self.dataset_dir) if f.endswith(".wav")]
+            if len(audio_files) == 0:
+                # No audio files found
+                return []
+            if isinstance(self.metadata, pd.DataFrame) and not self.metadata.empty:
+                meta_map = {os.path.basename(r["filename"]): r["transcript"] for _, r in self.metadata.iterrows()}
+            else:
+                meta_map = {}
+            # Debug statements
+            # print("Audio files:", audio_files)
+            # print("Metadata filenames:", self.metadata["filename"].tolist())
+            # print("Meta map:", meta_map)
+            data = [(os.path.join(self.dataset_dir, af), meta_map.get(af, "")) for af in audio_files]
+            # print("Data:", data)
+            return data
+        except Exception as e:
+            return []
 
     def update_metadata(self, audio_file, new_transcript):
         base_name = os.path.basename(audio_file)
         mask = self.metadata["filename"].apply(os.path.basename) == base_name
         if mask.any():
             self.metadata.loc[mask, "transcript"] = new_transcript
-            self.metadata.to_csv(self.metadata_file, sep="|", index=False, header=False)
-            return f"Transcript for {base_name} updated: {new_transcript}"
-        return f"Error: {base_name} not found in metadata."
+        else:
+            new_row = pd.DataFrame({"filename": [base_name], "transcript": [new_transcript]})
+            self.metadata = pd.concat([self.metadata, new_row], ignore_index=True)
+        self.metadata.to_csv(self.metadata_file, sep="|", index=False, header=True)
+        return f"Transcript for {base_name} updated: {new_transcript}"
 
     def create_interface(self):
-        data = self.load_data()
+        # Constants
+        items_per_page = 10  # Number of items to display per page
 
-        def process_clip(audio_file, _, new_text):
-            return self.update_metadata(audio_file, new_text)
+        def save_uploaded_files(files):
+            if not os.path.exists(self.dataset_dir):
+                os.makedirs(self.dataset_dir)
+            for file in files:
+                try:
+                    file_path = os.path.join(self.dataset_dir, file.name)
+                    with open(file_path, "wb") as f:
+                        f.write(file.read())
+                except Exception as e:
+                    return f"Error: {e}"
+            return f"{len(files)} file(s) uploaded successfully."
+
+        def refresh_data(current_page):
+            # Reload metadata
+            self.metadata = self._load_metadata()
+            data = self.load_data()
+            total_items = len(data)
+            total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
+
+            # Adjust current_page if needed
+            if current_page < 1:
+                current_page = 1
+            elif current_page > total_pages:
+                current_page = total_pages
+
+            start_idx = (current_page - 1) * items_per_page
+            end_idx = start_idx + items_per_page
+            page_data = data[start_idx:end_idx]
+
+            updates = []
+            file_paths = []
+
+            for i in range(items_per_page):
+                if i < len(page_data):
+                    audio_file, transcript = page_data[i]
+                    audio_update = gr.update(value=audio_file, visible=True)
+                    transcript_update = gr.update(value=transcript, visible=True)
+                    save_btn_update = gr.update(visible=True)
+                    status_box_update = gr.update(value="", visible=True)
+                    file_paths.append(audio_file)
+                else:
+                    audio_update = gr.update(visible=False)
+                    transcript_update = gr.update(value="", visible=False)
+                    save_btn_update = gr.update(visible=False)
+                    status_box_update = gr.update(value="", visible=False)
+                    file_paths.append(None)
+                updates.extend([audio_update, transcript_update, save_btn_update, status_box_update])
+
+            # Update the page label
+            page_label_update = f"Page {current_page} of {total_pages}"
+
+            return updates + [file_paths, current_page, page_label_update]
+
+        def save_transcript(index):
+            def inner(transcript, file_paths):
+                audio_file = file_paths[index]
+                if audio_file is None:
+                    return "No file loaded"
+                result = self.update_metadata(audio_file, transcript)
+                return result
+            return inner
 
         with gr.Blocks() as app:
             gr.Markdown("## LJSpeech Dataset Generator")
@@ -51,29 +136,10 @@ class LJSpeechDatasetUI:
 
             with gr.Tab("File Upload"):
                 upload_audio = gr.File(label="Upload .wav files", file_types=["audio"], file_count="multiple")
-
-                def save_uploaded_files(files):
-                    if not os.path.exists(self.dataset_dir):
-                        os.makedirs(self.dataset_dir)
-                    for file in files:
-                        try:
-                            file_path = os.path.join(self.dataset_dir, file.name)
-                            if isinstance(file, bytes):  # Binary file (e.g., images)
-                                with open(file_path, "wb") as f:
-                                    f.write(file)  # Directly write bytes
-                            else:
-                                with open(file_path, "wb") as f:
-                                    f.write(file.encode())  # Encode string content as bytes
-                        except Exception as e:
-                            return f"Error: {e}"
-                    return f"{len(files)} file(s) uploaded successfully."
-
                 upload_status = gr.Textbox(label="Upload Status", interactive=False)
                 upload_audio.upload(save_uploaded_files, inputs=upload_audio, outputs=upload_status)
 
             with gr.Tab("Preprocessing"):
-                
-
                 with gr.Row():
                     pp_filter = gr.Button("Step 1: Preprocess - Filter Background Noise")
                     pp_chunk = gr.Button("Step 2: Preprocess - Chunking")
@@ -86,12 +152,63 @@ class LJSpeechDatasetUI:
                 pp_main.click(main_process.gradio_run, inputs=[], outputs=pp_status)
 
             with gr.Tab("Transcript Editing"):
-                for audio_file, transcript in data:
+                components = []
+
+                # State to store file paths and current page
+                file_states = gr.State(value=[None]*items_per_page)
+                current_page_state = gr.State(value=1)
+                page_label_state = gr.State(value="Page 1 of 1")
+
+                # Define the Refresh Data button and navigation buttons
+                with gr.Row():
+                    refresh_btn = gr.Button("Refresh Data")
+                    previous_btn = gr.Button("Previous")
+                    next_btn = gr.Button("Next")
+                    page_label = gr.Markdown("Page 1 of 1")
+
+                # Components for audio files and transcripts
+                for i in range(items_per_page):
                     with gr.Row():
-                        gr.Audio(audio_file, label=os.path.basename(audio_file), interactive=False)
-                        transcript_box = gr.Textbox(value=transcript, label="Transcript", lines=3)
-                        save_btn = gr.Button("Save")
-                        save_btn.click(process_clip, [gr.State(audio_file), transcript_box, transcript_box], outputs=gr.Textbox(show_label=False))
+                        audio_component = gr.Audio(visible=False)
+                        transcript_box = gr.Textbox(visible=False, label="Transcript", lines=3, interactive=True)
+                        save_btn = gr.Button("Save", visible=False)
+                        status_box = gr.Textbox(visible=False, label="Status", interactive=False)
+                        components.append((audio_component, transcript_box, save_btn, status_box))
+
+                # Set outputs to all components, file_states, current_page_state, and page_label
+                outputs = []
+                for component in components:
+                    outputs.extend(component)
+                outputs.extend([file_states, current_page_state, page_label])
+
+                # Connect the refresh button
+                refresh_btn.click(
+                    fn=lambda: refresh_data(1),
+                    inputs=[],
+                    outputs=outputs
+                )
+
+                # Previous button click
+                previous_btn.click(
+                    fn=lambda current_page: refresh_data(current_page - 1),
+                    inputs=[current_page_state],
+                    outputs=outputs
+                )
+
+                # Next button click
+                next_btn.click(
+                    fn=lambda current_page: refresh_data(current_page + 1),
+                    inputs=[current_page_state],
+                    outputs=outputs
+                )
+
+                # Connect the save buttons
+                for index, (audio_component, transcript_box, save_btn, status_box) in enumerate(components):
+                    save_btn.click(
+                        save_transcript(index),
+                        inputs=[transcript_box, file_states],
+                        outputs=status_box
+                    )
 
             with gr.Tab("Post Processing"):
                 with gr.Row():
