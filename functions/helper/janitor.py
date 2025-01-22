@@ -22,4 +22,4 @@ class Janitor:
             os.remove(metadata_file)
             metadata_deleted = True
         
-        return f"Deleted {wavs_deleted} files from 'wavs' directory and metadata file: {'deleted' if metadata_deleted else 'not found'}.\n Target Directories:\n{wavs_dir}\n{metadata_file}"
+        return f"Deleted {wavs_deleted} files from 'wavs' directory and metadata file: {'deleted' if metadata_deleted else 'not found'}.\nTarget Directories:\n{wavs_dir}\n{metadata_file}"
