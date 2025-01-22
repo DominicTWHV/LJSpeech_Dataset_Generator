@@ -70,6 +70,16 @@ class LJSpeechDatasetUI:
                 os.makedirs(self.dataset_dir)
 
             try:
+                duplicate_files = []
+                for temp_file_path in file_paths:
+                    file_name = os.path.basename(temp_file_path)
+                    dest_file_path = os.path.join(self.dataset_dir, file_name)
+                    if os.path.exists(dest_file_path):
+                        duplicate_files.append(file_name)
+                
+                if duplicate_files:
+                    return f"Error: The following file(s) already exist: \n{'\n '.join(duplicate_files)}"
+
                 for temp_file_path in file_paths:
                     file_name = os.path.basename(temp_file_path)
                     
@@ -131,7 +141,8 @@ class LJSpeechDatasetUI:
                 return result
             return inner
 
-        with gr.Blocks() as app:
+        with gr.Blocks(title="LJSpeech Dataset Generator", theme=gr.themes.Ocean()) as app:
+
             gr.Markdown("## LJSpeech Dataset Generator")
 
             noise_reducer = NoiseReducer()
@@ -215,7 +226,7 @@ class LJSpeechDatasetUI:
 
             gr.Markdown("Is there an issue? Feel free to open an issue on my [GitHub](https://github.com/DominicTWHV/LJSpeech_Dataset_Generator)")
         return app
-
+    
 if __name__ == "__main__":
     ui = LJSpeechDatasetUI(dataset_dir="wavs", metadata_file="metadata.csv")
     app = ui.create_interface()

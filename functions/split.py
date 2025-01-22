@@ -56,6 +56,9 @@ class AudioSplitter:
                     pass
 
     def process_directory(self):
+        file_count = len([f for f in os.listdir(self.input_dir) if f.endswith('.wav') and not self.processed_pattern.match(f)])
+        print(f"[DEBUG] Starting to process: {file_count} files.")
+
         for filename in os.listdir(self.input_dir):
             filepath = os.path.join(self.input_dir, filename)
             if filename.endswith('.wav') and not self.processed_pattern.match(filename):

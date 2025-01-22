@@ -31,7 +31,7 @@ class MainProcess:
         return transcript
 
     def process_wav_files(self, input_dir, seperator):
-        print(f"[DEBUG] Processing .wav files in directory: {input_dir}")
+
         metadata = []
         wav_files = [f for f in os.listdir(input_dir) if f.endswith('.wav')]
         print(f"[DEBUG] Found {len(wav_files)} .wav files. Using {seperator} as seperator for metadata.csv")
