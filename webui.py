@@ -72,7 +72,7 @@ class LJSpeechDatasetUI:
                 try:
                     file_path = os.path.join(self.dataset_dir, file.name)
                     with open(file_path, "wb") as f:
-                        f.write(file.read())
+                        f.write(file)
                 except Exception as e:
                     return f"Error: {e}"
             return f"{len(files)} file(s) uploaded suc1cessfully."
