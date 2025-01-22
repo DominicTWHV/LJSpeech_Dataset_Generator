@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import gradio as gr
+import shutil
 
 from functions.filter import NoiseReducer
 from functions.split import AudioSplitter
@@ -64,17 +65,23 @@ class LJSpeechDatasetUI:
         #constants
         items_per_page = 10  #number of items to display per page
 
-        def save_uploaded_files(files):
+        def save_uploaded_files(file_paths):
             if not os.path.exists(self.dataset_dir):
                 os.makedirs(self.dataset_dir)
-            for file in files:
-                try:
-                    file_path = os.path.join(self.dataset_dir, file.name)
-                    with open(file_path, "wb") as f:
-                        f.write(file.read())
-                except Exception as e:
-                    return f"Error: {e}"
-            return f"{len(files)} file(s) uploaded successfully."
+
+            try:
+                for temp_file_path in file_paths:
+                    file_name = os.path.basename(temp_file_path)
+                    
+                    if not file_name.endswith(".wav"):
+                        return "Only .wav files are allowed."
+
+                    dest_file_path = os.path.join(self.dataset_dir, file_name)
+                    shutil.copy(temp_file_path, dest_file_path)
+
+                return f"{len(file_paths)} file(s) uploaded successfully."
+            except Exception as e:
+                return f"Error: {e}"
 
         def refresh_data(current_page):
             self.metadata = self._load_metadata()
@@ -133,7 +140,7 @@ class LJSpeechDatasetUI:
             sanitycheck = SanityChecker()
 
             with gr.Tab("File Upload"):
-                upload_audio = gr.File(label="Upload .wav files", file_types=["audio"], file_count="multiple")
+                upload_audio = gr.File(label="Upload .wav files", file_types=["audio"], file_count="multiple", type="filepath")
                 upload_status = gr.Textbox(label="Upload Status", interactive=False)
                 upload_audio.upload(save_uploaded_files, inputs=upload_audio, outputs=upload_status)
 
@@ -142,10 +149,12 @@ class LJSpeechDatasetUI:
                     pp_filter = gr.Button("Step 1: Preprocess - Filter Background Noise")
                     pp_chunk = gr.Button("Step 2: Preprocess - Chunking")
                     pp_main = gr.Button("Step 3: Preprocess - Auto Transcript")
-                    
+                
+                with gr.Column():
                     self.separator = gr.Textbox(label="Separator", value="|", interactive=True)
+                    gr.Markdown("Note: You can configure the seperator here. Leave it on default if you do not know what this is. You should only change this if your TTS engine requires a specific seperator.")
             
-                pp_status = gr.Textbox(label="Preprocess Status", interactive=False)
+                pp_status = gr.Textbox(label="Preprocess Status", lines=20, interactive=False)
             
                 pp_filter.click(noise_reducer.gradio_run, inputs=[], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[], outputs=pp_status)
