@@ -45,7 +45,11 @@ def process_wav_files(input_dir):
         
         #transcribe and append for each file
         transcript = transcribe_audio(input_path)
-        metadata.append([os.path.join('wavs', wav_file), transcript])
+        if transcript:
+            metadata.append([os.path.join('wavs', wav_file), transcript])
+        else:
+            os.remove(wav_file)
+            print(f"[WARNING] Skipping file {wav_file} as no transcript is available.")
     
     #regex match and sort filenames
     metadata.sort(key=lambda x: int(re.search(r'processed(\d+)', x[0]).group(1)))
