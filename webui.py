@@ -18,6 +18,13 @@ class LJSpeechDatasetUI:
         self.max_duration = 10000
         self.metadata = self._load_metadata()
 
+        #denoiser values
+        self.frame_length = 1024
+        self.hop_length = 256
+        self.silence_threshold = 1.0
+        self.prop_decrease_noisy = 1.0
+        self.prop_decrease_normal = 0.5
+
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
             #read csv
@@ -135,7 +142,7 @@ class LJSpeechDatasetUI:
             return inner
 
         with gr.Blocks(title="LJSpeech Dataset Generator", theme=gr.themes.Ocean()) as app:
-            gr.Markdown("# LJSpeech Dataset Generator")
+            gr.Markdown("<div style='text-align: center;'><h1>LJSpeech Dataset Generator</h1></div>")
 
             noise_reducer = NoiseReducer()
             splitter = AudioSplitter()
@@ -151,17 +158,58 @@ class LJSpeechDatasetUI:
                 with gr.Row():
                     with gr.Column():
                         pp_filter = gr.Button("Step 1: Preprocess - Filter Background Noise", variant="stop")
-                        gr.Markdown("The noise filtering function is in beta and may cause issues. Use with caution. Or skip directly to the next step.")
+                        gr.Markdown("_The noise filtering function is in beta and may cause issues. Use with caution. Or skip directly to the next step._")
                     pp_chunk = gr.Button("Step 2: Preprocess - Chunking", variant="primary")
                     pp_main = gr.Button("Step 3: Preprocess - Auto Transcript", variant="primary")
-                
-                with gr.Row():
-                    with gr.Column():
-                        separator_val = gr.Textbox(label="Separator", value="|", interactive=True)
-                        save_sep = gr.Button("Save Separator", variant="secondary")
-                        gr.Markdown("Note: You can configure the separator here. Leave it on default if you do not know what this is. You should only change this if your TTS engine requires a specific separator.")
             
+                with gr.Row():
+
                     with gr.Column():
+                        gr.Markdown("**Denoiser Controls**")
+                        frame_length = gr.Slider(
+                            label="Frame Length",
+                            minimum=256,
+                            maximum=4096,
+                            step=128,
+                            value=self.frame_length
+                        )
+
+                        hop_length = gr.Slider(
+                            label="Hop Length",
+                            minimum=64,
+                            maximum=1024,
+                            step=64,
+                            value=self.hop_length
+                        )
+
+                        silence_threshold = gr.Slider(
+                            label="Silence Threshold (dB)",
+                            minimum=-60,
+                            maximum=60,
+                            step=1,
+                            value=self.silence_threshold
+                        )
+
+                        prop_decrease_noisy = gr.Slider(
+                            label="Propagate Decrease (Noisy)",
+                            minimum=0.0,
+                            maximum=1.0,
+                            step=0.1,
+                            value=self.prop_decrease_noisy
+                        )
+
+                        prop_decrease_normal = gr.Slider(
+                            label="Propagate Decrease (Normal)",
+                            minimum=0.0,
+                            maximum=1.0,
+                            step=0.05,
+                            value=self.prop_decrease_normal
+                        )
+
+                        save_denoiser = gr.Button("Save", variant="secondary")
+
+                    with gr.Column():
+                        gr.Markdown("**Chunking Controls**")
                         min_duration_slider = gr.Slider(
                             label="Minimum Chunking Duration (ms)",
                             minimum=1000,
@@ -178,26 +226,60 @@ class LJSpeechDatasetUI:
                             value=self.max_duration
                         )
 
-                        save_dur = gr.Button("Save Duration", variant="secondary")
-                        gr.Markdown("Used to adjust the min/max duration (in ms) when chunking, leave default if you don't know what this is.")
+                        save_dur = gr.Button("Save", variant="secondary")
+                    
+                        gr.Markdown("**Seperator Controls**")
+                        separator_val = gr.Textbox(label="Separator", value="|", interactive=True)
+                        save_sep = gr.Button("Save", variant="secondary")
+                        
+                    with gr.Column():
+                        gr.Markdown("**Settings Status**")
+                        settings_update = gr.Textbox(label="Output", lines=4, interactive=False)
+                        settings_curr = gr.Textbox(
+                            label="Current Settings",
+                            value=f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nPropagate Decrease (Noisy): {self.prop_decrease_noisy}\nPropagate Decrease (Normal): {self.prop_decrease_normal}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}""",
+                            lines=10, interactive=False
+                        )
+                    
+                    with gr.Column():
+                        gr.Markdown("**Settings Information**")
+                        gr.Markdown("Denoiser:\nParameter adjustments to filter background noise.\n\nChunking:\nAdjust the minimum and maximum duration for splitting audio files.\n\nSeparator:\nAdjust the separator for metadata.csv\n\n\n**You should leave all of these options alone if you don't understand these.**")
 
-                pp_status = gr.Textbox(label="Preprocess Status", lines=10, interactive=False)
+
+                pp_status = gr.Textbox(label="Preprocess Output", lines=10, interactive=False)
             
-                pp_filter.click(noise_reducer.gradio_run, inputs=[], outputs=pp_status)
+                pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[min_duration_slider, max_duration_slider], outputs=pp_status)
                 pp_main.click(main_process.gradio_run, inputs=[separator_val], outputs=pp_status)
     
                 def update_separator(new_sep):
                     self.separator = new_sep
-                    return f"Separator updated to: {new_sep}"
+                    return f"Separator updated to: \n{new_sep}"
                 
                 def update_duration(min_duration, max_duration):
                     self.min_duration = min_duration
                     self.max_duration = max_duration
-                    return f"Duration updated to: {min_duration}ms (min) and {max_duration}ms (max)"
+                    return f"Duration updated to: \n{min_duration}ms (min) \n{max_duration}ms (max)"
+                
+                def update_denoiser(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
+                    self.frame_length = frame_length
+                    self.hop_length = hop_length
+                    self.silence_threshold = silence_threshold
+                    self.prop_decrease_noisy = prop_decrease_noisy
+                    self.prop_decrease_normal = prop_decrease_normal
+
+                    return f"Denoiser settings updated: \nFrame Length: {self.frame_length}, \nHop Length: {self.hop_length}, \nSilence Threshold: {self.silence_threshold}, \nPropagate Decrease (Noisy): {self.prop_decrease_noisy}, \nPropagate Decrease (Normal): {self.prop_decrease_normal}"
     
-                save_sep.click(update_separator, inputs=[separator_val], outputs=pp_status)
-                save_dur.click(update_duration, inputs=[min_duration_slider, max_duration_slider], outputs=pp_status)
+                def update_settings_display():
+                    return f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nPropagate Decrease (Noisy): {self.prop_decrease_noisy}\nPropagate Decrease (Normal): {self.prop_decrease_normal}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}"""
+
+                save_sep.click(update_separator, inputs=[separator_val], outputs=settings_update)
+                save_dur.click(update_duration, inputs=[min_duration_slider, max_duration_slider], outputs=settings_update)
+                save_denoiser.click(update_denoiser, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal], outputs=settings_update)
+                
+                save_sep.click(fn=update_settings_display, inputs=[], outputs=settings_curr)
+                save_dur.click(fn=update_settings_display, inputs=[], outputs=settings_curr)
+                save_denoiser.click(fn=update_settings_display, inputs=[], outputs=settings_curr)
 
             with gr.Tab("Transcript Editing"):
                 components = []
@@ -252,7 +334,9 @@ class LJSpeechDatasetUI:
                 san_check.click(sanitycheck.run_check, inputs=[], outputs=san_status)
                 package_data.click(main_process.zip_output, inputs=[], outputs=[download_link])
 
-            gr.Markdown("Is there an issue? Feel free to open an issue on my [GitHub](https://github.com/DominicTWHV/LJSpeech_Dataset_Generator)")
+            gr.Markdown("<div style='text-align: center;'>Something doesn't work? Feel free to open an issue on my <a href='https://github.com/DominicTWHV/LJSpeech_Dataset_Generator'>GitHub</a></div>")
+            gr.Markdown("<div style='text-align: center;'>Built by Dominic with ❤️</div>")
+
         return app
 
 if __name__ == "__main__":
