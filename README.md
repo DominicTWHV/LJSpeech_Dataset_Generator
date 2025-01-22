@@ -58,15 +58,11 @@ sudo chmod +x pipeline.sh
 ./pipeline.sh
 ```
 
-Move all your `.wav` files into wavs/ when instructed to do so, and then follow the (y/n) prompts.
-
-Note: the sanity check script will be ran automatically at the end with no user prompting required.
+Then connect to the Gradio WebUI
 
 -----------------------------------
 
 # Post:
-
-You should now see a zip file (`dataset.zip`) located in `output/`, that should contain all files with the standard LJSpeech layout.
 
 You are free to move `dataset.zip` into the input directory of piper (or other training platform) for pre-processing.
 
@@ -80,9 +76,9 @@ And unzip it
 unzip dataset.zip
 ```
 
-# Error reporting:
+You can also download it via the WebUI
 
-If sanity check fails, please make sure your audio is clear, as that could indicate one or more chunks does NOT contain any transcript. You should also be able to tell which one it is by looking at the print lines during transcription. (Depending on which error it gives, the error you are looking for is `Critical Error: Mismatch! Expected <num>, but found <num> .wav files.`)
+# Error reporting:
 
 For other errors (less common), check if the script has permission to generate files, or if you/a running background script had removed the generated file(s).
 

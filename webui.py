@@ -17,13 +17,7 @@ class LJSpeechDatasetUI:
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
             #read csv
-            df = pd.read_csv(
-                self.metadata_file,
-                sep="|",
-                header=None,
-                names=["wav_filename", "transcript", "normalized_transcript"],
-                dtype=str,
-            )
+            df = pd.read_csv(self.metadata_file,sep="|",header=None,names=["wav_filename", "transcript", "normalized_transcript"],dtype=str,)
             df["filename"] = df["wav_filename"].astype(str)
             df = df[["filename", "transcript"]]
             return df
@@ -81,7 +75,7 @@ class LJSpeechDatasetUI:
                         f.write(file.read())
                 except Exception as e:
                     return f"Error: {e}"
-            return f"{len(files)} file(s) uploaded successfully."
+            return f"{len(files)} file(s) uploaded suc1cessfully."
 
         def refresh_data(current_page):
             self.metadata = self._load_metadata()
@@ -149,12 +143,14 @@ class LJSpeechDatasetUI:
                     pp_filter = gr.Button("Step 1: Preprocess - Filter Background Noise")
                     pp_chunk = gr.Button("Step 2: Preprocess - Chunking")
                     pp_main = gr.Button("Step 3: Preprocess - Auto Transcript")
-
+                    
+                    seperator = gr.Textbox(label="Separator", interactive=True)
+            
                 pp_status = gr.Textbox(label="Preprocess Status", interactive=False)
-
+            
                 pp_filter.click(noise_reducer.gradio_run, inputs=[], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[], outputs=pp_status)
-                pp_main.click(main_process.gradio_run, inputs=[], outputs=pp_status)
+                pp_main.click(main_process.gradio_run, inputs=[seperator], outputs=pp_status)
 
             with gr.Tab("Transcript Editing"):
                 components = []

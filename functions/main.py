@@ -30,11 +30,11 @@ class MainProcess:
                 transcript = ""
         return transcript
 
-    def process_wav_files(self, input_dir):
+    def process_wav_files(self, input_dir, seperator):
         print(f"[DEBUG] Processing .wav files in directory: {input_dir}")
         metadata = []
         wav_files = [f for f in os.listdir(input_dir) if f.endswith('.wav')]
-        print(f"[DEBUG] Found {len(wav_files)} .wav files")
+        print(f"[DEBUG] Found {len(wav_files)} .wav files. Using {seperator} as seperator for metadata.csv")
 
         for wav_file in wav_files:
             input_path = os.path.join(input_dir, wav_file)
@@ -49,7 +49,7 @@ class MainProcess:
         metadata.sort(key=lambda x: int(re.search(r'processed(\d+)', x[0]).group(1)))
         print(f"[DEBUG] Writing metadata.csv...")
         df = pd.DataFrame(metadata, columns=["wav_filename", "transcript"])
-        df.to_csv("metadata.csv", sep='|', index=False)
+        df.to_csv("metadata.csv", sep=seperator, index=False)
 
         print(f"[DEBUG] metadata.csv generated successfully")
 
@@ -74,8 +74,8 @@ class MainProcess:
                 total_length += duration
         return total_length
 
-    def gradio_run(self):
-        self.process_wav_files('wavs')
+    def gradio_run(self, seperator):
+        self.process_wav_files('wavs', seperator)
         return self.get_logs()
 
     def manual_run(self):
