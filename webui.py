@@ -13,8 +13,8 @@ class LJSpeechDatasetUI:
     def __init__(self, dataset_dir="wavs", metadata_file="metadata.csv"):
         self.dataset_dir = dataset_dir
         self.metadata_file = metadata_file
-        self.metadata = self._load_metadata()
         self.separator = '|'
+        self.metadata = self._load_metadata()
 
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
@@ -132,7 +132,7 @@ class LJSpeechDatasetUI:
                 return result
             return inner
 
-        with gr.Blocks() as app:
+        with gr.Blocks(title="LJSpeech Dataset Generator", theme=gr.themes.Ocean()) as app:
             gr.Markdown("## LJSpeech Dataset Generator")
 
             noise_reducer = NoiseReducer()
@@ -147,22 +147,28 @@ class LJSpeechDatasetUI:
 
             with gr.Tab("Preprocessing"):
                 with gr.Row():
-                    pp_filter = gr.Button("Step 1: Preprocess - Filter Background Noise")
-                    pp_chunk = gr.Button("Step 2: Preprocess - Chunking")
-                    pp_main = gr.Button("Step 3: Preprocess - Auto Transcript")
+                    with gr.Column():
+                        pp_filter = gr.Button("Step 1: Preprocess - Filter Background Noise", variant="stop")
+                        gr.Markdown("The noise filtering function is in beta and may cause issues. Use with caution. Or skip directly to the next step.")
+                    pp_chunk = gr.Button("Step 2: Preprocess - Chunking", variant="primary")
+                    pp_main = gr.Button("Step 3: Preprocess - Auto Transcript", variant="primary")
                 
                 with gr.Column():
                     separator_val = gr.Textbox(label="Separator", value="|", interactive=True)
-                    save_sep = gr.Button("Save Separator")
-                    gr.Markdown("Note: You can configure the seperator here. Leave it on default if you do not know what this is. You should only change this if your TTS engine requires a specific seperator.")
+                    save_sep = gr.Button("Save Separator", variant="stop")
+                    gr.Markdown("Note: You can configure the separator here. Leave it on default if you do not know what this is. You should only change this if your TTS engine requires a specific separator.")
             
                 pp_status = gr.Textbox(label="Preprocess Status", lines=20, interactive=False)
             
                 pp_filter.click(noise_reducer.gradio_run, inputs=[], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[], outputs=pp_status)
-                pp_main.click(main_process.gradio_run, inputs=[self.separator], outputs=pp_status)
-
-                save_sep.click(self.separator = separator_val)
+                pp_main.click(main_process.gradio_run, inputs=[separator_val], outputs=pp_status)
+    
+                def update_separator(new_sep):
+                    self.separator = new_sep
+                    return f"Separator updated to: {new_sep}"
+    
+                save_sep.click(update_separator, inputs=separator_val, outputs=pp_status)
 
             with gr.Tab("Transcript Editing"):
                 components = []
@@ -174,9 +180,9 @@ class LJSpeechDatasetUI:
 
                 #define elements on top
                 with gr.Row():
-                    refresh_btn = gr.Button("Refresh Data")
-                    previous_btn = gr.Button("Previous")
-                    next_btn = gr.Button("Next")
+                    refresh_btn = gr.Button("Refresh Data", variant="primary")
+                    previous_btn = gr.Button("Previous", variant="secondary")
+                    next_btn = gr.Button("Next", variant="secondary")
                     page_label = gr.Markdown("Page 1 of 1")
 
                 #parts
@@ -208,8 +214,8 @@ class LJSpeechDatasetUI:
 
             with gr.Tab("Post Processing"):
                 with gr.Row():
-                    san_check = gr.Button("Step 1: Sanity Check")
-                    package_data = gr.Button("Step 2: Package Dataset")
+                    san_check = gr.Button("Step 1: Sanity Check", variant="primary")
+                    package_data = gr.Button("Step 2: Package Dataset", variant="primary")
 
                 san_status = gr.Textbox(label="Sanity Check Output", interactive=False)
                 download_link = gr.File(label="Download Packaged Dataset", interactive=False)
