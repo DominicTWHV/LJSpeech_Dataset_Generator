@@ -140,6 +140,12 @@ class LJSpeechDatasetUI:
                 result = self.update_metadata(audio_file, transcript)
                 return result
             return inner
+        
+        def update_file_list():
+                    if not os.path.exists(self.dataset_dir):
+                        return ""
+                    audio_files = [f for f in os.listdir(self.dataset_dir) if f.endswith(".wav")]
+                    return "\n".join(audio_files)
 
         with gr.Blocks(title="LJSpeech Dataset Generator", theme=gr.themes.Ocean()) as app:
             gr.Markdown("<div style='text-align: center;'><h1>LJSpeech Dataset Generator</h1></div>")
@@ -150,17 +156,30 @@ class LJSpeechDatasetUI:
             sanitycheck = SanityChecker()
 
             with gr.Tab("File Upload"):
-                upload_audio = gr.File(label="Upload .wav files", file_types=["audio"], file_count="multiple", type="filepath")
-                upload_status = gr.Textbox(label="Upload Status", interactive=False)
+                with gr.Row():
+                    with gr.Column():
+                        upload_audio = gr.File(label="Upload .wav files", file_types=["audio"], file_count="multiple", type="filepath")
+                        upload_status = gr.Textbox(label="Upload Status", interactive=False)
+
+                    with gr.Column():
+                        file_list = gr.Textbox(label="Uploaded Files", lines=10, interactive=False)
+
                 upload_audio.upload(save_uploaded_files, inputs=upload_audio, outputs=upload_status)
+                upload_audio.upload(update_file_list, inputs=[], outputs=file_list)
 
             with gr.Tab("Preprocessing"):
                 with gr.Row():
                     with gr.Column():
                         pp_filter = gr.Button("Step 1: Preprocess - Filter Background Noise", variant="stop")
-                        gr.Markdown("_The noise filtering function is in beta and may cause issues. Use with caution. Or skip directly to the next step._")
-                    pp_chunk = gr.Button("Step 2: Preprocess - Chunking", variant="primary")
-                    pp_main = gr.Button("Step 3: Preprocess - Auto Transcript", variant="primary")
+                        gr.Markdown("_The noise filtering function is in beta and may cause issues. Use with caution, or skip directly to the next step._")
+                    
+                    with gr.Column():
+                        pp_chunk = gr.Button("Step 2: Preprocess - Chunking", variant="primary")
+                        gr.Markdown("Chunking is the process of splitting a long audio file into smaller portions. This is recommended.")
+                    
+                    with gr.Column():
+                        pp_main = gr.Button("Step 3: Preprocess - Auto Transcript", variant="primary")
+                        gr.Markdown("The final step or preprocessing. This will generate the metadata.csv file.")
             
                 with gr.Row():
 
@@ -245,7 +264,6 @@ class LJSpeechDatasetUI:
                         gr.Markdown("**Settings Information**")
                         gr.Markdown("Denoiser:\nParameter adjustments to filter background noise.\n\nChunking:\nAdjust the minimum and maximum duration for splitting audio files.\n\nSeparator:\nAdjust the separator for metadata.csv\n\n\n**You should leave all of these options alone if you don't understand these.**")
 
-
                 pp_status = gr.Textbox(label="Preprocess Output", lines=10, interactive=False)
             
                 pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal], outputs=pp_status)
@@ -325,11 +343,13 @@ class LJSpeechDatasetUI:
 
             with gr.Tab("Post Processing"):
                 with gr.Row():
-                    san_check = gr.Button("Step 1: Sanity Check", variant="primary")
-                    package_data = gr.Button("Step 2: Package Dataset", variant="primary")
+                    with gr.Column():
+                        san_check = gr.Button("Step 1: Sanity Check", variant="primary")
+                        package_data = gr.Button("Step 2: Package Dataset", variant="primary")
 
-                san_status = gr.Textbox(label="Sanity Check Output", interactive=False)
-                download_link = gr.File(label="Download Packaged Dataset", interactive=False)
+                    with gr.Column():
+                        san_status = gr.Textbox(label="Sanity Check Output", interactive=False)
+                        download_link = gr.File(label="Download Packaged Dataset", interactive=False)
 
                 san_check.click(sanitycheck.run_check, inputs=[], outputs=san_status)
                 package_data.click(main_process.zip_output, inputs=[], outputs=[download_link])
