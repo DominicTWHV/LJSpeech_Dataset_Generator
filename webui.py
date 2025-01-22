@@ -14,6 +14,7 @@ class LJSpeechDatasetUI:
         self.dataset_dir = dataset_dir
         self.metadata_file = metadata_file
         self.metadata = self._load_metadata()
+        self.separator = '|'
 
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
@@ -151,7 +152,8 @@ class LJSpeechDatasetUI:
                     pp_main = gr.Button("Step 3: Preprocess - Auto Transcript")
                 
                 with gr.Column():
-                    self.separator = gr.Textbox(label="Separator", value="|", interactive=True)
+                    separator_val = gr.Textbox(label="Separator", value="|", interactive=True)
+                    save_sep = gr.Button("Save Separator")
                     gr.Markdown("Note: You can configure the seperator here. Leave it on default if you do not know what this is. You should only change this if your TTS engine requires a specific seperator.")
             
                 pp_status = gr.Textbox(label="Preprocess Status", lines=20, interactive=False)
@@ -159,6 +161,8 @@ class LJSpeechDatasetUI:
                 pp_filter.click(noise_reducer.gradio_run, inputs=[], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[], outputs=pp_status)
                 pp_main.click(main_process.gradio_run, inputs=[self.separator], outputs=pp_status)
+
+                save_sep.click(self.separator = separator_val)
 
             with gr.Tab("Transcript Editing"):
                 components = []
