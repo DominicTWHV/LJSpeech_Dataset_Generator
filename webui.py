@@ -78,7 +78,7 @@ class LJSpeechDatasetUI:
                         duplicate_files.append(file_name)
                 
                 if duplicate_files:
-                    return f"Error: The following file(s) already exist: \n{'\n '.join(duplicate_files)}"
+                    return "Error: The following file(s) already exist:\n" + "\n ".join(duplicate_files)
 
                 for temp_file_path in file_paths:
                     file_name = os.path.basename(temp_file_path)
