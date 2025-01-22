@@ -36,16 +36,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 echo
 echo -e "\e[35m=======================================================\e[0m"
-echo
-echo -e "\e[36mNotice: Please place your .wav files in the 'wavs/' directory now\e[0m"
-echo
-echo -e "\e[35m=======================================================\e[0m"
-echo
-echo -e "\e[36mStart the Gradio WebUI now? (y/n)\e[0m"
-read filter_choice
-if [ "$filter_choice" = "y" ]; then
-    python3 webui.py
-else
-    echo "[OK] You can run it manually later with: python3 webui.py"
-fi
+echo Initializing the WebUI
+python3 webui.py
+
 deactivate
