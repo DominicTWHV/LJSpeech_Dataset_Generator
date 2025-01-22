@@ -215,4 +215,4 @@ class LJSpeechDatasetUI:
 if __name__ == "__main__":
     ui = LJSpeechDatasetUI(dataset_dir="wavs", metadata_file="metadata.csv")
     app = ui.create_interface()
-    app.launch(server_name="0.0.0.0", server_port=7860)
+    app.launch(server_name="0.0.0.0", server_port=7860, title="LJSpeech Dataset Generator", favicon="assets/icon.ico")
