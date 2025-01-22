@@ -313,44 +313,48 @@ class LJSpeechDatasetUI:
             with gr.Tab("Transcript Editing"):
                 components = []
 
-                #states
-                file_states = gr.State(value=[None]*items_per_page)
+                # States
+                file_states = gr.State(value=[None] * items_per_page)
                 current_page_state = gr.State(value=1)
                 page_label_state = gr.State(value="Page 1 of 1")
 
-                #define elements on top
+                # Define elements on top
                 with gr.Row():
                     refresh_btn = gr.Button("Refresh Data", variant="primary")
                     previous_btn = gr.Button("Previous", variant="secondary")
                     next_btn = gr.Button("Next", variant="secondary")
                     page_label = gr.Markdown("Page 1 of 1")
 
-                #parts
-                for i in range(items_per_page):
+                # Create components in 4 columns per row
+                for i in range(0, items_per_page, 4):
                     with gr.Row():
-                        audio_component = gr.Audio(visible=False)
-                        transcript_box = gr.Textbox(visible=False, label="Transcript", lines=3, interactive=True)
-                        save_btn = gr.Button("Update", visible=False)
-                        status_box = gr.Textbox(visible=False, label="Status", interactive=False)
-                        components.append((audio_component, transcript_box, save_btn, status_box))
+                        for j in range(4):
+                            if i + j < items_per_page:
+                                with gr.Column():
+                                    audio_component = gr.Audio(visible=False)
+                                    transcript_box = gr.Textbox(visible=False, label="Transcript", lines=3, interactive=True)
+                                    save_btn = gr.Button("Update", visible=False)
+                                    status_box = gr.Textbox(visible=False, label="Status", interactive=False)
+                                    components.append((audio_component, transcript_box, save_btn, status_box))
 
-                #set outputs to all components, file_states, current_page_state, page_label
+                # Set outputs to all components, file_states, current_page_state, page_label
                 outputs = []
                 for component in components:
                     outputs.extend(component)
                 outputs.extend([file_states, current_page_state, page_label])
 
-                refresh_btn.click(fn=lambda: refresh_data(1),inputs=[],outputs=outputs) #refresh button
+                # Refresh button
+                refresh_btn.click(fn=lambda: refresh_data(1), inputs=[], outputs=outputs)
 
-                #prev page
-                previous_btn.click(fn=lambda current_page: refresh_data(current_page - 1),inputs=[current_page_state],outputs=outputs)
+                # Previous page
+                previous_btn.click(fn=lambda current_page: refresh_data(current_page - 1), inputs=[current_page_state], outputs=outputs)
 
-                #next page
-                next_btn.click(fn=lambda current_page: refresh_data(current_page + 1),inputs=[current_page_state],outputs=outputs)
+                # Next page
+                next_btn.click(fn=lambda current_page: refresh_data(current_page + 1), inputs=[current_page_state], outputs=outputs)
 
-                #update transcript
+                # Update transcript
                 for index, (audio_component, transcript_box, save_btn, status_box) in enumerate(components):
-                    save_btn.click(save_transcript(index),inputs=[transcript_box, file_states],outputs=status_box)
+                    save_btn.click(save_transcript(index), inputs=[transcript_box, file_states], outputs=status_box)
 
             with gr.Tab("Post Processing"):
                 with gr.Row():
