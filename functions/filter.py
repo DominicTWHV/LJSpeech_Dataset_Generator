@@ -20,6 +20,9 @@ class NoiseReducer:
         sys.stdout = self.log_stream  # Redirect print statements to log_stream
 
     def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length=2048, hop_length=512, silence_threshold=0.1, prop_decrease_noisy=1.0, prop_decrease_normal=0.5):
+        with self.print_lock:
+            print(f"[DEBUG] Starting noise reduction with frame_length={frame_length}, hop_length={hop_length}, silence_threshold={silence_threshold}.")
+        
         # Calculate energy of each frame
         energy = np.array([sum(abs(audio_data[i:i+frame_length]**2)) for i in range(0, len(audio_data), hop_length)])
         max_energy = max(energy)
@@ -45,6 +48,9 @@ class NoiseReducer:
 
             reduced_audio[start_idx:end_idx] = reduced_frame
 
+        with self.print_lock:
+            print(f"[DEBUG] Completed noise reduction for current audio data.")
+        
         return reduced_audio
 
     def process_single_audio_file(self, file, frame_length=2048, hop_length=512, silence_threshold=0.1, prop_decrease_noisy=1.0, prop_decrease_normal=0.5):
@@ -52,7 +58,7 @@ class NoiseReducer:
         audio_data, sample_rate = librosa.load(file_path, sr=None)
         
         with self.print_lock:
-            print(f"[DEBUG] Processing {file_path}.")
+            print(f"[DEBUG] Processing {file_path}. Sample rate: {sample_rate}, Audio length: {len(audio_data)}")
 
         reduced_noise = self.apply_dynamic_noise_reduction(audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
         new_filename = file.replace('.wav', '_cleaned.wav')
@@ -60,8 +66,14 @@ class NoiseReducer:
         sf.write(new_file_path, reduced_noise, sample_rate)
         os.remove(file_path)
 
+        with self.print_lock:
+            print(f"[DEBUG] Saved cleaned file as {new_file_path} and removed original file {file_path}.")
+
     def process_audio_files(self, frame_length=2048, hop_length=512, silence_threshold=0.1, prop_decrease_noisy=1.0, prop_decrease_normal=0.5):
         files = [f for f in os.listdir(self.input_dir) if f.endswith('.wav') and not f.endswith('_cleaned.wav')]
+
+        with self.print_lock:
+            print(f"[DEBUG] Found {len(files)} files to process.")
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [executor.submit(self.process_single_audio_file, file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal) for file in files]
