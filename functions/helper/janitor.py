@@ -5,9 +5,9 @@ class Janitor:
     @staticmethod
     def reset_dataset_files():
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        wavs_dir = os.path.join(current_dir, 'wavs')
-        metadata_file = os.path.join(current_dir, 'metadata.csv')
+        root_dir = os.path.abspath(os.path.join(current_dir, '..', '..'))
+        wavs_dir = os.path.join(root_dir, 'wavs')
+        metadata_file = os.path.join(root_dir, 'metadata.csv')
 
         wavs_deleted = 0
         if os.path.exists(wavs_dir):
