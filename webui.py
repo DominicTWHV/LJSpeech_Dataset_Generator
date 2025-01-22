@@ -34,19 +34,19 @@ class LJSpeechDatasetUI:
             df = df[["filename", "transcript"]]
             return df
         else:
-            # Return an empty DataFrame with specified columns
+            #return an empty DataFrame with specified columns
             df = pd.DataFrame(columns=["filename", "transcript"])
             return df
 
     def load_data(self):
         try:
             if not os.path.exists(self.dataset_dir):
-                # Dataset directory does not exist
                 return []
+            
             audio_files = [f for f in os.listdir(self.dataset_dir) if f.endswith(".wav")]
             if len(audio_files) == 0:
-                # No audio files found
                 return []
+            
             if isinstance(self.metadata, pd.DataFrame) and not self.metadata.empty:
                 meta_map = {os.path.basename(r["filename"]): r["transcript"] for _, r in self.metadata.iterrows()}
             else:
@@ -169,12 +169,14 @@ class LJSpeechDatasetUI:
                         
                     with gr.Column():
                         gr.Markdown("**Uploaded files will be displayed here.**")
-                        file_list = gr.Textbox(label="Uploaded Files", lines=9, interactive=False)
+                        file_list = gr.Textbox(label="Uploaded Files", lines=6, interactive=False)
+                        file_list_update = gr.Button("Update", variant="primary")
 
                 with gr.Row():
                     upload_status = gr.Textbox(label="Output", interactive=False)
 
                 upload_audio.upload(handle_upload, inputs=upload_audio, outputs=[upload_status, file_list])
+                file_list_update.click(update_file_list, inputs=[], outputs=file_list)
 
             with gr.Tab("Pre-Processing"):
                 with gr.Row():
