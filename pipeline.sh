@@ -43,46 +43,11 @@ echo -e "\e[36mNotice: Please place your .wav files in the 'wavs/' directory now
 echo
 echo -e "\e[35m=======================================================\e[0m"
 echo
-echo -e "\e[36mDo you wish to automatically clean up background noise? Please note this function is a little quirky. Use at your own risk. (y/n)\e[0m"
+echo -e "\e[36mStart the Gradio WebUI now? (y/n)\e[0m"
 read filter_choice
 if [ "$filter_choice" = "y" ]; then
-    python3 filter.py
+    python3 webui.py
 else
-    echo "[OK] You can run it manually later with: python3 filter.py"
+    echo "[OK] You can run it manually later with: python3 webui.py"
 fi
-echo
-echo -e "\e[35m=======================================================\e[0m"
-echo
-echo -e "\e[36mDo you wish to split the audio files into smaller chunks? It's recommended that you do so. (y/n)\e[0m"
-read filter_choice
-if [ "$filter_choice" = "y" ]; then
-    python3 split.py
-else
-    echo "[OK] You can run it manually later with: python3 split.py"
-fi
-echo
-echo -e "\e[35m=======================================================\e[0m"
-echo
-echo -e "\e[36mReady to run the generation script to generate the dataset? (y/n)\e[0m"
-read run_choice
-if [ "$run_choice" = "y" ]; then
-    python3 main.py
-else
-    echo "[OK] You can run it manually later with: python3 main.py"
-fi
-echo
-echo -e "\e[35m===================Sanity Check========================\e[0m"
-echo
-#perform sanity check
-python3 sanitycheck.py
-echo
-echo -e "\e[35m=======================================================\e[0m"
-echo
-
-#deactivate venv
 deactivate
-
-if [ -f "output/dataset.zip" ]; then
-    echo -e "[OK] \e[32mDataset Generation Complete! You should now see a zip folder located in output/ named dataset.zip\e[0m"
-fi
-

@@ -1,2 +1,5 @@
 /venv/
 /wavs/
+metadata.csv
+/.gradio
+__pycache__
