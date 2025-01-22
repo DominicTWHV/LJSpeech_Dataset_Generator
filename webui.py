@@ -8,6 +8,7 @@ from functions.split import AudioSplitter
 from functions.main import MainProcess
 from functions.sanitycheck import SanityChecker
 
+from functions.helper.janitor import Janitor
 
 class LJSpeechDatasetUI:
     def __init__(self, dataset_dir="wavs", metadata_file="metadata.csv"):
@@ -361,6 +362,18 @@ class LJSpeechDatasetUI:
 
                 san_check.click(sanitycheck.run_check, inputs=[], outputs=san_status)
                 package_data.click(main_process.zip_output, inputs=[], outputs=[download_link])
+
+            with gr.Tab("Cleanup"):
+                with gr.Row():
+
+                    with gr.Column():
+                        gr.Markdown("**This button resets the dataset files. Use with caution.**")
+                        cleanup_btn = gr.Button("Cleanup", variant="secondary")
+
+                    with gr.Column():
+                        cleanup_output = gr.Textbox(label="Cleanup Output", lines=5, interactive=False)
+
+                cleanup_btn.click(Janitor.reset_dataset_files, inputs=[], outputs=cleanup_output)
 
             gr.Markdown("<div style='text-align: center;'>Something doesn't work? Feel free to open an issue on my <a href='https://github.com/DominicTWHV/LJSpeech_Dataset_Generator'>GitHub</a></div>")
             gr.Markdown("<div style='text-align: center;'>Built by Dominic with ❤️</div>")
