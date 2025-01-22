@@ -31,8 +31,7 @@ class SanityChecker:
         if expected_wav_count == actual_wav_count:
             return f"Sanity check passed:\nNumber of .wav files: {actual_wav_count}\nNumber of lines in metadata.csv (excluding header): {num_lines-1}\n\nPlease proceed to zipping the dataset."
         else:
-            print("\033[91mCritical Error: Expected {}, found {}.\033[0m".format(expected_wav_count, actual_wav_count))
-            print("Please report this issue at: https://github.com/DominicTWHV/LJSpeech_Dataset_Generator/issues")
+            return f"Critical Error: Expected {expected_wav_count}, found {actual_wav_count}."
 
 if __name__ == '__main__':
     checker = SanityChecker()
