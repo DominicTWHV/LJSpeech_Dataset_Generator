@@ -48,7 +48,29 @@ class LJSpeechDatasetUI:
             splitter = AudioSplitter()
             main_process = MainProcess()
             sanitycheck = SanityChecker()
-            
+
+            with gr.Tab("File Upload"):
+                upload_audio = gr.File(label="Upload .wav files", file_types=["audio"], file_count="multiple")
+
+                def save_uploaded_files(files):
+                    if not os.path.exists(self.dataset_dir):
+                        os.makedirs(self.dataset_dir)
+                    for file in files:
+                        try:
+                            file_path = os.path.join(self.dataset_dir, file.name)
+                            if isinstance(file, bytes):  # Binary file (e.g., images)
+                                with open(file_path, "wb") as f:
+                                    f.write(file)  # Directly write bytes
+                            else:
+                                with open(file_path, "wb") as f:
+                                    f.write(file.encode())  # Encode string content as bytes
+                        except Exception as e:
+                            return f"Error: {e}"
+                    return f"{len(files)} file(s) uploaded successfully."
+
+                upload_status = gr.Textbox(label="Upload Status", interactive=False)
+                upload_audio.upload(save_uploaded_files, inputs=upload_audio, outputs=upload_status)
+
             with gr.Tab("Preprocessing"):
                 
 
