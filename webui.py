@@ -166,14 +166,13 @@ class LJSpeechDatasetUI:
                     with gr.Column():
                         gr.Markdown("**Upload your .wav files here for pre-processing.**")
                         upload_audio = gr.File(label="Upload .wav files", file_types=["audio"], file_count="multiple", type="filepath")
+                        upload_status = gr.Textbox(label="Output", interactive=False)
                         
                     with gr.Column():
                         gr.Markdown("**Uploaded files will be displayed here.**")
                         file_list = gr.Textbox(label="Uploaded Files", lines=6, interactive=False)
                         file_list_update = gr.Button("Update", variant="primary")
 
-                with gr.Row():
-                    upload_status = gr.Textbox(label="Output", interactive=False)
 
                 upload_audio.upload(handle_upload, inputs=upload_audio, outputs=[upload_status, file_list])
                 file_list_update.click(update_file_list, inputs=[], outputs=file_list)
@@ -380,7 +379,7 @@ class LJSpeechDatasetUI:
                 gr.Markdown("# Instructions")
                 gr.Markdown("_Documentation for all available features_")
 
-                with gr.Accordion("File Upload", open=True):
+                with gr.Accordion("File Upload", open=False):
                     gr.Markdown("""
                     1. Navigate to the `File Upload` tab
                     2. Click to upload your .wav audio files 
@@ -388,7 +387,7 @@ class LJSpeechDatasetUI:
                     4. Use the refresh button if needed to update the list
                     """)
 
-                with gr.Accordion("Pre-Processing", open=True):
+                with gr.Accordion("Pre-Processing", open=False):
                     gr.Markdown("### Step 1: Audio Chunking")
                     gr.Markdown("""
                     - Required step to split long audio files into smaller segments
@@ -417,7 +416,7 @@ class LJSpeechDatasetUI:
                     - Configurable CSV separator character
                     """)
 
-                with gr.Accordion("Transcript Editing", open=True):
+                with gr.Accordion("Transcript Editing", open=False):
                     gr.Markdown("""
                     - Review and edit auto-generated transcripts
                     - Features:
@@ -427,7 +426,7 @@ class LJSpeechDatasetUI:
                     - Click "Update" after editing to save changes
                     """)
 
-                with gr.Accordion("Post Processing", open=True):
+                with gr.Accordion("Post Processing", open=False):
                     gr.Markdown("### Sanity Check")
                     gr.Markdown("""
                     - Validates metadata.csv file
@@ -446,7 +445,7 @@ class LJSpeechDatasetUI:
                         - All required dataset files
                     """)
 
-                with gr.Accordion("Cleanup", open=True):
+                with gr.Accordion("Cleanup", open=False):
                     gr.Markdown("""
                     ⚠️ **Warning: Destructive Operation**
                     
