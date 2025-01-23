@@ -71,7 +71,6 @@ class AudioSplitter:
             if f.endswith('.wav') and not self.processed_pattern.match(f)
         ]
         file_count = len(files_to_process)
-        yield f"[DEBUG] Starting to process: {file_count} files."
 
         # Process each file
         for filename in files_to_process:

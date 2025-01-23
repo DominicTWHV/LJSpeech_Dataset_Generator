@@ -52,14 +52,14 @@ class MainProcess:
         yield f"[DEBUG] metadata.csv generated successfully\n\n[OK] Finished processing {len(wav_files)} files."
 
     def zip_output(self, output_filename="output/dataset.zip"):
-        yield f"[DEBUG] Zipping the output files into {output_filename}..."
+        print(f"[DEBUG] Zipping the output files into {output_filename}...")
         try:
             os.makedirs(os.path.dirname(output_filename), exist_ok=True)
             subprocess.run(['zip', '-r', output_filename, 'wavs', 'metadata.csv'], check=True)
-            yield f"[DEBUG] Successfully created {output_filename}"
+            print(f"[DEBUG] Successfully created {output_filename}")
             return output_filename
         except subprocess.CalledProcessError as e:
-            yield f"[ERROR] Error while zipping: {e}"
+            print(f"[ERROR] Error while zipping: {e}")
             return None
 
     def total_audio_length(self, directory):
