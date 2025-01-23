@@ -86,4 +86,5 @@ class NoiseReducer:
             return "ERROR: No .wav files found in the input directory. Please upload them and try again."
 
         #stream logs
-        return self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
+        for log in self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
+            yield log
