@@ -49,7 +49,7 @@ class MainProcess:
         yield f"[DEBUG] Writing metadata.csv..."
         df = pd.DataFrame(metadata, columns=["wav_filename", "transcript"])
         df.to_csv("metadata.csv", sep=separator, index=False)
-        yield f"[DEBUG] metadata.csv generated successfully"
+        yield f"[DEBUG] metadata.csv generated successfully\n\n[OK] Finished processing {len(wav_files)} files."
 
     def zip_output(self, output_filename="output/dataset.zip"):
         yield f"[DEBUG] Zipping the output files into {output_filename}..."

@@ -88,7 +88,7 @@ class NoiseReducer:
             except Exception as e:
                 yield f"[ERROR] Failed to process {file}: {str(e)}"
 
-        yield f"[DEBUG] Processed and cleaned {len(files)} files."
+        yield f"\n[OK] Finished filtering {len(files)} files."
 
     def gradio_run(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
         if not check_wav_files():

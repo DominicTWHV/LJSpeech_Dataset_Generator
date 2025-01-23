@@ -91,6 +91,8 @@ class AudioSplitter:
                     yield f"[DEBUG] Removed unprocessed file: {filename}"
                 except Exception as e:
                     yield f"[ERROR] Failed to remove unprocessed file {filename}: {str(e)}"
+            
+        yield f"\n[OK] Finished splitting {file_count} files."
 
     def gradio_run(self, min_chunk_duration, max_chunk_duration):
         if not check_wav_files():
