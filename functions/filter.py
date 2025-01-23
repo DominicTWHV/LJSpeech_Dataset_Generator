@@ -16,7 +16,7 @@ class NoiseReducer:
     def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
         yield f"[DEBUG] Starting noise reduction with frame_length={frame_length}, hop_length={hop_length}, silence_threshold={silence_threshold}."
         
-        #calculate energy of each frame
+        # Calculate energy of each frame
         energy = np.array([sum(abs(audio_data[i:i+frame_length]**2)) for i in range(0, len(audio_data), hop_length)])
         max_energy = max(energy)
         normalized_energy = energy / max_energy
@@ -51,13 +51,16 @@ class NoiseReducer:
 
         yield f"[DEBUG] Processing {file_path}. Sample rate: {sample_rate}, Audio length: {len(audio_data)}"
 
+        reduced_audio = None
         for log in self.apply_dynamic_noise_reduction(audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
             yield log
+            if isinstance(log, np.ndarray):
+                reduced_audio = log
 
-        #save reduced audio to a new file
+        # Save reduced audio to a new file
         new_filename = file.replace('.wav', '_cleaned.wav')
         new_file_path = os.path.join(self.input_dir, new_filename)
-        sf.write(new_file_path, audio_data, sample_rate)
+        sf.write(new_file_path, reduced_audio, sample_rate)
         os.remove(file_path)
 
         yield f"[DEBUG] Saved cleaned file as {new_file_path} and removed original file {file_path}."
@@ -85,6 +88,7 @@ class NoiseReducer:
         if not check_wav_files():
             return "ERROR: No .wav files found in the input directory. Please upload them and try again."
 
-        #stream logs
+        logs = []
         for log in self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
-            yield log
+            logs.append(log)
+            yield "\n".join(logs)
