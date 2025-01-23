@@ -180,16 +180,17 @@ class LJSpeechDatasetUI:
 
             with gr.Tab("Pre-Processing"):
                 with gr.Row():
+                    
                     with gr.Column():
-                        pp_filter = gr.Button("Step 1: Preprocess - Filter Background Noise", variant="stop")
+                        pp_chunk = gr.Button("Step 1 - Chunking", variant="primary")
+                        gr.Markdown("Chunking is the process of splitting a long audio file into smaller portions. This is recommended.")
+
+                    with gr.Column():
+                        pp_filter = gr.Button("Step 2 - Filter Background Noise", variant="stop")
                         gr.Markdown("_The noise filtering function is in beta and may cause issues. Use with caution, or skip directly to the next step._")
                     
                     with gr.Column():
-                        pp_chunk = gr.Button("Step 2: Preprocess - Chunking", variant="primary")
-                        gr.Markdown("Chunking is the process of splitting a long audio file into smaller portions. This is recommended.")
-                    
-                    with gr.Column():
-                        pp_main = gr.Button("Step 3: Preprocess - Auto Transcript", variant="primary")
+                        pp_main = gr.Button("Step 3 - Auto Transcript", variant="primary")
                         gr.Markdown("The final step or preprocessing. This will generate the metadata.csv file.")
 
                 with gr.Row():
@@ -275,7 +276,7 @@ class LJSpeechDatasetUI:
                         gr.Markdown("**Settings Information**")
                         gr.Markdown("Denoiser:\nParameter adjustments to filter background noise.\n\nChunking:\nAdjust the minimum and maximum duration for splitting audio files.\n\nSeparator:\nAdjust the separator for metadata.csv\n\n\n**You should leave all of these options alone if you don't understand these.**")
 
-                pp_status = gr.Textbox(label="Preprocess Output", lines=10, interactive=False)
+                pp_status = gr.Textbox(label="Output", lines=10, interactive=False)
             
                 pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[min_duration_slider, max_duration_slider], outputs=pp_status)
@@ -313,19 +314,19 @@ class LJSpeechDatasetUI:
             with gr.Tab("Transcript Editing"):
                 components = []
 
-                # States
+                #dft states
                 file_states = gr.State(value=[None] * items_per_page)
                 current_page_state = gr.State(value=1)
                 page_label_state = gr.State(value="Page 1 of 1")
 
-                # Define elements on top
+                #dfine elements on top
                 with gr.Row():
                     refresh_btn = gr.Button("Refresh Data", variant="primary")
                     previous_btn = gr.Button("Previous", variant="secondary")
                     next_btn = gr.Button("Next", variant="secondary")
                     page_label = gr.Markdown("Page 1 of 1")
 
-                # Create components in 4 columns per row
+                #template for creating components
                 for i in range(0, items_per_page, 4):
                     with gr.Row():
                         for j in range(4):
@@ -337,22 +338,16 @@ class LJSpeechDatasetUI:
                                     status_box = gr.Textbox(visible=False, label="Status", interactive=False)
                                     components.append((audio_component, transcript_box, save_btn, status_box))
 
-                # Set outputs to all components, file_states, current_page_state, page_label
+                #save outputs
                 outputs = []
                 for component in components:
                     outputs.extend(component)
+
                 outputs.extend([file_states, current_page_state, page_label])
-
-                # Refresh button
                 refresh_btn.click(fn=lambda: refresh_data(1), inputs=[], outputs=outputs)
-
-                # Previous page
                 previous_btn.click(fn=lambda current_page: refresh_data(current_page - 1), inputs=[current_page_state], outputs=outputs)
-
-                # Next page
                 next_btn.click(fn=lambda current_page: refresh_data(current_page + 1), inputs=[current_page_state], outputs=outputs)
 
-                # Update transcript
                 for index, (audio_component, transcript_box, save_btn, status_box) in enumerate(components):
                     save_btn.click(save_transcript(index), inputs=[transcript_box, file_states], outputs=status_box)
 
@@ -381,7 +376,7 @@ class LJSpeechDatasetUI:
 
                 cleanup_btn.click(Janitor.reset_dataset_files, inputs=[], outputs=cleanup_output)
 
-            gr.Markdown("<div style='text-align: center;'>Something doesn't work? Feel free to open an issue on my <a href='https://github.com/DominicTWHV/LJSpeech_Dataset_Generator'>GitHub</a></div>")
+            gr.Markdown("<div style='text-align: center;'>Something doesn't work? Feel free to open an issue on <a href='https://github.com/DominicTWHV/LJSpeech_Dataset_Generator'>GitHub</a></div>")
             gr.Markdown("<div style='text-align: center;'>Built by Dominic with ❤️</div>")
 
         return app
