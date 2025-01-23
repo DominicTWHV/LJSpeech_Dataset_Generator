@@ -28,6 +28,7 @@ wavs/<name>_processed<index>.wav|<transcript>
 Script tested on:
 
 Ubuntu Server 22.04 LTS with python version `3.10.12`
+
 Ubuntu Desktop 24.04 LTS with python version `3.12.3`
 
 Should also be fully compatible with Debian based systems.
