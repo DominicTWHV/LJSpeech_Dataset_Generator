@@ -375,6 +375,51 @@ class LJSpeechDatasetUI:
                         cleanup_output = gr.Textbox(label="Cleanup Output", lines=5, interactive=False)
 
                 cleanup_btn.click(Janitor.reset_dataset_files, inputs=[], outputs=cleanup_output)
+            
+            with gr.Tab("Instructions"):
+                gr.Markdown("""
+                # Instructions for LJSpeech Dataset Generator
+
+                ## 1. File Upload
+                - Go to the `File Upload` tab
+                - Upload your .wav audio files
+                - Files should appear in the list automatically
+                - Use refresh button if needed
+
+                ## 2. Pre-Processing
+                ### Step 1: Chunking
+                - Required step to split long audio files
+                - Adjust duration settings if needed
+                - Click "Step 1 - Chunking" button
+
+                ### Step 2: Noise Filtering (Optional)
+                - Use to clean up audio quality
+                - Can be run before or after chunking
+                - Adjust filter settings as needed
+                - **Note:** This feature is in beta - use with caution
+
+                ### Step 3: Auto Transcript
+                - Generates metadata.csv file
+                - Uses speech recognition on all audio files
+                - Adjust CSV separator if needed
+
+                ## 3. Transcript Editing
+                - Review auto-generated transcripts
+                - Listen to audio clips
+                - Edit transcripts as needed
+                - Click "Update" to save changes
+
+                ## 4. Post Processing
+                1. Run Sanity Check (Recommended)
+                   - Verifies metadata.csv completeness
+                2. Package Dataset
+                   - Creates downloadable ZIP file
+
+                ## 5. Cleanup
+                - Removes all generated and input files
+                - Use only when starting fresh dataset
+                - **Warning:** This action cannot be undone
+                """)
 
             gr.Markdown("<div style='text-align: center;'>Something doesn't work? Feel free to open an issue on <a href='https://github.com/DominicTWHV/LJSpeech_Dataset_Generator'>GitHub</a></div>")
             gr.Markdown("<div style='text-align: center;'>Built by Dominic with ❤️</div>")
