@@ -14,10 +14,6 @@ class NoiseReducer:
     def __init__(self, input_dir='wavs/'):
         self.input_dir = input_dir
         self.print_lock = threading.Lock()
-        # Create an in-memory stream to capture print statements
-        self.log_stream = StringIO()
-        self.original_stdout = sys.stdout
-        sys.stdout = self.log_stream  # Redirect print statements to log_stream
 
     def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length=2048, hop_length=512, silence_threshold=0.1, prop_decrease_noisy=1.0, prop_decrease_normal=0.5):
         print(f"[DEBUG] Starting noise reduction with frame_length={frame_length}, hop_length={hop_length}, silence_threshold={silence_threshold}.")
@@ -75,17 +71,20 @@ class NoiseReducer:
 
         print(f"[DEBUG] Processed and cleaned {len(files)} files.")
 
-    def get_logs(self):
-        # Retrieve the captured logs from the StringIO stream
-        logs = self.log_stream.getvalue()
-        # Reset the log stream for the next capture
-        self.log_stream.seek(0)
-        self.log_stream.truncate(0)
-        return logs
-    
     def gradio_run(self, frame_length=1024, hop_length=256, silence_threshold=0.1, prop_decrease_noisy=1.0, prop_decrease_normal=0.5):
         if not check_wav_files():
             return "ERROR: No .wav files found in the input directory. Please upload them and try again."
         
-        self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
-        return self.get_logs()
+        log_stream = StringIO()
+        original_stdout = sys.stdout
+        sys.stdout = log_stream
+
+        try:
+            self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
+        finally:
+            #ensure stdout restored
+            sys.stdout = original_stdout
+
+        logs = log_stream.getvalue()
+        log_stream.close()
+        return logs

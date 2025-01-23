@@ -15,12 +15,8 @@ class AudioSplitter:
         self.output_dir = output_dir
         self.processed_pattern = re.compile(r'^(.*)_processed(\d+)\.wav$')
         self.recognizer = sr.Recognizer()
-        
-        # Create an in-memory stream to capture print statements
-        self.log_stream = StringIO()
-        self.original_stdout = sys.stdout
-        sys.stdout = self.log_stream  # Redirect print statements to log_stream
 
+    
     def split_audio(self, filepath, min_chunk_duration, max_chunk_duration):
         audio = AudioSegment.from_wav(filepath)
         total_duration = len(audio)
@@ -71,17 +67,20 @@ class AudioSplitter:
                 print(f"[DEBUG] Removing unprocessed file: {filename}")
                 os.remove(filepath)
 
-    def get_logs(self):
-        # Retrieve the captured logs from the StringIO stream
-        logs = self.log_stream.getvalue()
-        # Reset the log stream for the next capture
-        self.log_stream.seek(0)
-        self.log_stream.truncate(0)
-        return logs
-    
     def gradio_run(self, min_chunk_duration, max_chunk_duration):
         if not check_wav_files():
             return "ERROR: No .wav files found in the input directory. Please upload them and try again."
         
-        self.process_directory(min_chunk_duration, max_chunk_duration)
-        return self.get_logs()
+        log_stream = StringIO()
+        original_stdout = sys.stdout
+        sys.stdout = log_stream
+
+        try:
+            self.process_directory(min_chunk_duration, max_chunk_duration)
+        finally:
+            #ensure stdout restored
+            sys.stdout = original_stdout
+
+        logs = log_stream.getvalue()
+        log_stream.close()
+        return logs
