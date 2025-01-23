@@ -153,7 +153,7 @@ class LJSpeechDatasetUI:
                     file_list_content = update_file_list()
                     return status, file_list_content
 
-        with gr.Blocks(title="LJSpeech Dataset Generator", theme=gr.themes.Ocean()) as app:
+        with gr.Blocks(title="LJSpeech Dataset Generator", theme=gr.themes.Citrus()) as app:
             gr.Markdown("<div style='text-align: center;'><h1>LJSpeech Dataset Generator</h1></div>")
 
             noise_reducer = NoiseReducer()
