@@ -1,5 +1,3 @@
-import sys
-from io import StringIO
 import os
 import re
 import pandas as pd
@@ -12,58 +10,56 @@ from functions.helper.run_san import check_wav_files
 class MainProcess:
     def __init__(self):
         self.recognizer = sr.Recognizer()
-        # Create an in-memory stream to capture print statements
-        self.log_stream = StringIO()
-        self.original_stdout = sys.stdout
-        sys.stdout = self.log_stream  # Redirect print statements to log_stream
 
     def transcribe_audio(self, audio_file):
-        print(f"[DEBUG] Transcribing audio file: {audio_file}")
+        logs = []
+        logs.append(f"[DEBUG] Transcribing audio file: {audio_file}")
         with sr.AudioFile(audio_file) as source:
             audio_data = self.recognizer.record(source)
             try:
                 transcript = self.recognizer.recognize_google(audio_data)
-                print(f"[DEBUG] Transcript: {transcript}")
+                logs.append(f"[DEBUG] Transcript: {transcript}")
             except sr.UnknownValueError:
-                print(f"[WARNING] Google Speech Recognition could not understand {audio_file}")
+                logs.append(f"[WARNING] Google Speech Recognition could not understand {audio_file}")
                 transcript = ""
             except sr.RequestError as e:
-                print(f"[ERROR] Could not request results; {e}\n\nAre you connected to the internet?")
+                logs.append(f"[ERROR] Could not request results; {e}\n\nAre you connected to the internet?")
                 transcript = ""
-        return transcript
+        return transcript, logs
 
-    def process_wav_files(self, input_dir, seperator):
+    def process_wav_files(self, input_dir, separator=','):
+        wav_files = [f for f in os.listdir(input_dir) if f.endswith('.wav')]
+        yield f"[DEBUG] Found {len(wav_files)} .wav files. Using '{separator}' as separator for metadata.csv"
 
         metadata = []
-        wav_files = [f for f in os.listdir(input_dir) if f.endswith('.wav')]
-        print(f"[DEBUG] Found {len(wav_files)} .wav files. Using {seperator} as seperator for metadata.csv")
 
         for wav_file in wav_files:
             input_path = os.path.join(input_dir, wav_file)
-            print(f"[DEBUG] Processing file: {wav_file}")
-            transcript = self.transcribe_audio(input_path)
+            yield f"[DEBUG] Processing file: {wav_file}"
+            transcript, transcribe_logs = self.transcribe_audio(input_path)
+            for log in transcribe_logs:
+                yield log
             if transcript:
                 metadata.append([os.path.join('wavs', wav_file), transcript])
             else:
                 os.remove(input_path)
-                print(f"[WARNING] Skipping file {wav_file} as no transcript is available.")
+                yield f"[WARNING] Skipping file {wav_file} as no transcript is available."
 
         metadata.sort(key=lambda x: int(re.search(r'processed(\d+)', x[0]).group(1)))
-        print(f"[DEBUG] Writing metadata.csv...")
+        yield f"[DEBUG] Writing metadata.csv..."
         df = pd.DataFrame(metadata, columns=["wav_filename", "transcript"])
-        df.to_csv("metadata.csv", sep=seperator, index=False)
-
-        print(f"[DEBUG] metadata.csv generated successfully")
+        df.to_csv("metadata.csv", sep=separator, index=False)
+        yield f"[DEBUG] metadata.csv generated successfully"
 
     def zip_output(self, output_filename="output/dataset.zip"):
-        print(f"[DEBUG] Zipping the output files into {output_filename}...")
+        yield f"[DEBUG] Zipping the output files into {output_filename}..."
         try:
             os.makedirs(os.path.dirname(output_filename), exist_ok=True)
             subprocess.run(['zip', '-r', output_filename, 'wavs', 'metadata.csv'], check=True)
-            print(f"[DEBUG] Successfully created {output_filename}")
+            yield f"[DEBUG] Successfully created {output_filename}"
             return output_filename
         except subprocess.CalledProcessError as e:
-            print(f"[ERROR] Error while zipping: {e}")
+            yield f"[ERROR] Error while zipping: {e}"
             return None
 
     def total_audio_length(self, directory):
@@ -76,23 +72,12 @@ class MainProcess:
                 total_length += duration
         return total_length
 
-    def gradio_run(self, seperator):
+    def gradio_run(self, separator):
         if not check_wav_files():
-            return "ERROR: No .wav files found in the input directory. Please upload them and try again."
-        
-        self.process_wav_files('wavs', seperator)
-        return self.get_logs()
+            yield "ERROR: No .wav files found in the input directory. Please upload them and try again."
+            return
 
-    def manual_run(self):
-        print(f"[DEBUG] Starting the audio processing pipeline...")
-        self.process_wav_files('wavs')
-        self.zip_output()
-        print(f"[OK] Dataset Created!")
-    
-    def get_logs(self):
-        # Retrieve the captured logs from the StringIO stream
-        logs = self.log_stream.getvalue()
-        # Reset the log stream for the next capture
-        self.log_stream.seek(0)
-        self.log_stream.truncate(0)
-        return logs
+        logs = []
+        for log in self.process_wav_files('wavs', separator):
+            logs.append(log)
+            yield "\n".join(logs)
