@@ -377,49 +377,90 @@ class LJSpeechDatasetUI:
                 cleanup_btn.click(Janitor.reset_dataset_files, inputs=[], outputs=cleanup_output)
             
             with gr.Tab("Instructions"):
-                gr.Markdown("""
-                # Instructions for LJSpeech Dataset Generator
+                gr.Markdown("# Instructions")
+                gr.Markdown("_Documentation for all available features_")
 
-                ## 1. File Upload
-                - Go to the `File Upload` tab
-                - Upload your .wav audio files
-                - Files should appear in the list automatically
-                - Use refresh button if needed
+                with gr.Accordion("File Upload", open=True):
+                    gr.Markdown("""
+                    1. Navigate to the `File Upload` tab
+                    2. Click to upload your .wav audio files 
+                    3. Files will appear in the list automatically
+                    4. Use the refresh button if needed to update the list
+                    """)
 
-                ## 2. Pre-Processing
-                ### Step 1: Chunking
-                - Required step to split long audio files
-                - Adjust duration settings if needed
-                - Click "Step 1 - Chunking" button
+                with gr.Accordion("Pre-Processing", open=True):
+                    gr.Markdown("### Step 1: Audio Chunking")
+                    gr.Markdown("""
+                    - Required step to split long audio files into smaller segments
+                    - Configurable settings:
+                        - Minimum duration (ms)
+                        - Maximum duration (ms)
+                    - Click "Step 1 - Chunking" to begin processing
+                    """)
+                    
+                    gr.Markdown("### Step 2: Noise Filtering (Beta)")
+                    gr.Markdown("""
+                    - Optional step to improve audio quality
+                    - Can be run before or after chunking
+                    - Adjustable parameters:
+                        - Frame Length
+                        - Hop Length 
+                        - Silence Threshold
+                        - Noise Reduction Levels
+                    ⚠️ This feature is in beta - use with caution
+                    """)
+                    
+                    gr.Markdown("### Step 3: Auto Transcription") 
+                    gr.Markdown("""
+                    - Generates metadata.csv containing transcripts
+                    - Uses AI speech recognition
+                    - Configurable CSV separator character
+                    """)
 
-                ### Step 2: Noise Filtering (Optional)
-                - Use to clean up audio quality
-                - Can be run before or after chunking
-                - Adjust filter settings as needed
-                - **Note:** This feature is in beta - use with caution
+                with gr.Accordion("Transcript Editing", open=True):
+                    gr.Markdown("""
+                    - Review and edit auto-generated transcripts
+                    - Features:
+                        - Audio playback
+                        - Text editing
+                        - Pagination controls
+                    - Click "Update" after editing to save changes
+                    """)
 
-                ### Step 3: Auto Transcript
-                - Generates metadata.csv file
-                - Uses speech recognition on all audio files
-                - Adjust CSV separator if needed
+                with gr.Accordion("Post Processing", open=True):
+                    gr.Markdown("### Sanity Check")
+                    gr.Markdown("""
+                    - Validates metadata.csv file
+                    - Checks for:
+                        - Missing transcripts
+                        - Invalid file references
+                        - Data formatting issues
+                    - Recommended before packaging
+                    """)
+                    
+                    gr.Markdown("### Package Dataset")
+                    gr.Markdown("""
+                    - Creates final ZIP archive containing:
+                        - Processed audio files
+                        - metadata.csv
+                        - All required dataset files
+                    """)
 
-                ## 3. Transcript Editing
-                - Review auto-generated transcripts
-                - Listen to audio clips
-                - Edit transcripts as needed
-                - Click "Update" to save changes
+                with gr.Accordion("Cleanup", open=True):
+                    gr.Markdown("""
+                    ⚠️ **Warning: Destructive Operation**
+                    
+                    - Removes all:
+                        - Input audio files
+                        - Generated chunks
+                        - Processed files
+                        - metadata.csv
+                    - Use only when starting a completely new dataset
+                    - This action cannot be undone
+                    """)
 
-                ## 4. Post Processing
-                1. Run Sanity Check (Recommended)
-                   - Verifies metadata.csv completeness
-                2. Package Dataset
-                   - Creates downloadable ZIP file
-
-                ## 5. Cleanup
-                - Removes all generated and input files
-                - Use only when starting fresh dataset
-                - **Warning:** This action cannot be undone
-                """)
+                gr.Markdown("---")
+                gr.Markdown("_Documentation will be updated as new features are added_")
 
             gr.Markdown("<div style='text-align: center;'>Something doesn't work? Feel free to open an issue on <a href='https://github.com/DominicTWHV/LJSpeech_Dataset_Generator'>GitHub</a></div>")
             gr.Markdown("<div style='text-align: center;'>Built by Dominic with ❤️</div>")
