@@ -13,22 +13,13 @@ class NoiseReducer:
     def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
         # Collect logs to yield later
         logs = []
-        logs.append(f"[DEBUG] Starting noise reduction with frame_length={frame_length}, hop_length={hop_length}, silence_threshold={silence_threshold}.")
 
-        # Calculate energy of each frame
         energy = np.array([np.sum(np.abs(audio_data[i:i+frame_length]**2)) for i in range(0, len(audio_data), hop_length)])
         max_energy = np.max(energy) if energy.size > 0 else 1  # Avoid division by zero
         normalized_energy = energy / max_energy
 
-        # Debug outputs for energy and normalized_energy
-        logs.append(f"[DEBUG] Energy length: {len(energy)}, Normalized energy length: {len(normalized_energy)}")
-
-        # Build noise frames
         indices = [i for i in range(0, len(audio_data), hop_length)]
         noise_frames = [audio_data[i:i+frame_length] for idx, i in enumerate(indices) if normalized_energy[idx] < silence_threshold]
-
-        # Debug output to check the noise frame detection
-        logs.append(f"[DEBUG] Noise frames count: {len(noise_frames)}")
 
         if noise_frames:
             noise_profile = np.concatenate(noise_frames)
@@ -37,7 +28,7 @@ class NoiseReducer:
 
         reduced_audio = np.array(audio_data)
 
-        # Loop over audio_data
+        #loop ver audio data
         for idx, i in enumerate(indices):
             start_idx = i
             end_idx = min(i + frame_length, len(audio_data))
@@ -60,7 +51,7 @@ class NoiseReducer:
 
         logs.append(f"[DEBUG] Completed noise reduction for current audio data.")
 
-        # Return both the reduced audio and the logs
+        #return audio and logs
         return reduced_audio, logs
 
     def process_single_audio_file(self, file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
@@ -69,25 +60,25 @@ class NoiseReducer:
 
         yield f"[DEBUG] Processing {file_path}. Sample rate: {sample_rate}, Audio length: {len(audio_data)}"
 
-        # Apply noise reduction and collect logs
+        #apply reduct and get logs
         reduced_audio, reduction_logs = self.apply_dynamic_noise_reduction(
             audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
 
-        # Yield logs from noise reduction
+        #yield log
         for log in reduction_logs:
             yield log
 
-        # Save reduced audio to a new file
+        #save processed file as new
         new_filename = file.replace('.wav', '_cleaned.wav')
         new_file_path = os.path.join(self.input_dir, new_filename)
         sf.write(new_file_path, reduced_audio, sample_rate)
         os.remove(file_path)
 
-        yield f"[DEBUG] Saved cleaned file as {new_file_path} and removed original file {file_path}."
+        yield f"[DEBUG] Saved cleaned file as {new_file_path} and removed original file {file_path}.\n=====================================\n"
 
     def process_audio_files(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
         files = [f for f in os.listdir(self.input_dir) if f.endswith('.wav') and not f.endswith('_cleaned.wav')]
-        yield f"[DEBUG] Found {len(files)} files to process."
+        yield f"[DEBUG] Found {len(files)} files to process.\n"
 
         # Process files sequentially to ensure proper yielding to Gradio
         for file in files:
