@@ -14,18 +14,19 @@ class NoiseReducer:
         self.print_lock = threading.Lock()
 
     def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
+        yield f"[DEBUG] Starting noise reduction with frame_length={frame_length}, hop_length={hop_length}, silence_threshold={silence_threshold}."
 
         # Calculate energy of each frame
         energy = np.array([sum(abs(audio_data[i:i+frame_length]**2)) for i in range(0, len(audio_data), hop_length)])
         max_energy = max(energy) if energy.size > 0 else 1  # Avoid division by zero
         normalized_energy = energy / max_energy
         
-        #debug outputs for energy and normalized_energy
+        # Debug outputs for energy and normalized_energy
         yield f"[DEBUG] Energy length: {len(energy)}, Normalized energy length: {len(normalized_energy)}"
         
         noise_frames = [audio_data[i:i+frame_length] for i in range(0, len(audio_data), hop_length) if normalized_energy[i // hop_length] < silence_threshold]
         
-        #debug output to check the noise frame detection
+        # Debug output to check the noise frame detection
         yield f"[DEBUG] Noise frames count: {len(noise_frames)}"
         
         if noise_frames:
@@ -34,21 +35,25 @@ class NoiseReducer:
             noise_profile = audio_data[:frame_length]
 
         reduced_audio = np.array(audio_data)
+        
+        # Loop over audio_data, but make sure we don't go beyond the bounds of normalized_energy
         for i in range(0, len(audio_data), hop_length):
             start_idx = i
             end_idx = min(i + frame_length, len(audio_data))
             frame = audio_data[start_idx:end_idx]
 
-            # check that indexing doesn't go out of range
-            if i // hop_length < len(normalized_energy):
-                if normalized_energy[i // hop_length] < silence_threshold:
+            # Ensure that we don't exceed the length of normalized_energy
+            index = i // hop_length
+            if index < len(normalized_energy):  # Ensure index is within bounds
+                if normalized_energy[index] < silence_threshold:
                     reduced_frame = nr.reduce_noise(y=frame, sr=sample_rate, y_noise=noise_profile, prop_decrease=prop_decrease_noisy)
                 else:
                     reduced_frame = nr.reduce_noise(y=frame, sr=sample_rate, y_noise=noise_profile, prop_decrease=prop_decrease_normal)
 
                 reduced_audio[start_idx:end_idx] = reduced_frame
             else:
-                yield f"[ERROR] Index out of range: {i // hop_length} exceeds normalized_energy length."
+                # If we reach this point, it means we're trying to access an index outside of normalized_energy
+                yield f"[ERROR] Index {index} out of range for normalized_energy, skipping frame."
 
         yield f"[DEBUG] Completed noise reduction for current audio data."
         
