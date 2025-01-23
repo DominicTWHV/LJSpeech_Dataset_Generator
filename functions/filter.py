@@ -16,7 +16,7 @@ class NoiseReducer:
     def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
         yield f"[DEBUG] Starting noise reduction with frame_length={frame_length}, hop_length={hop_length}, silence_threshold={silence_threshold}."
         
-        # Calculate energy of each frame
+        #calculate energy of each frame
         energy = np.array([sum(abs(audio_data[i:i+frame_length]**2)) for i in range(0, len(audio_data), hop_length)])
         max_energy = max(energy)
         normalized_energy = energy / max_energy
@@ -51,10 +51,13 @@ class NoiseReducer:
 
         yield f"[DEBUG] Processing {file_path}. Sample rate: {sample_rate}, Audio length: {len(audio_data)}"
 
-        reduced_noise = self.apply_dynamic_noise_reduction(audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
+        for log in self.apply_dynamic_noise_reduction(audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
+            yield log
+
+        #save reduced audio to a new file
         new_filename = file.replace('.wav', '_cleaned.wav')
         new_file_path = os.path.join(self.input_dir, new_filename)
-        sf.write(new_file_path, reduced_noise, sample_rate)
+        sf.write(new_file_path, audio_data, sample_rate)
         os.remove(file_path)
 
         yield f"[DEBUG] Saved cleaned file as {new_file_path} and removed original file {file_path}."
@@ -63,9 +66,18 @@ class NoiseReducer:
         files = [f for f in os.listdir(self.input_dir) if f.endswith('.wav') and not f.endswith('_cleaned.wav')]
         yield f"[DEBUG] Found {len(files)} files to process."
 
+        def process_file(file):
+            for log in self.process_single_audio_file(file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
+                yield log
+
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(self.process_single_audio_file, file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal) for file in files]
-            concurrent.futures.wait(futures)
+            futures = {executor.submit(process_file, file): file for file in files}
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    for log in future.result():
+                        yield log
+                except Exception as e:
+                    yield f"[ERROR] Failed to process {futures[future]}: {str(e)}"
 
         yield f"[DEBUG] Processed and cleaned {len(files)} files."
 
@@ -73,6 +85,5 @@ class NoiseReducer:
         if not check_wav_files():
             return "ERROR: No .wav files found in the input directory. Please upload them and try again."
 
-        self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
-       
-        return '[DEBUG] Noise reduction completed.'
+        #stream logs
+        return self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
