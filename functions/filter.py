@@ -15,7 +15,7 @@ class NoiseReducer:
         self.input_dir = input_dir
         self.print_lock = threading.Lock()
 
-    def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length=2048, hop_length=512, silence_threshold=0.1, prop_decrease_noisy=1.0, prop_decrease_normal=0.5):
+    def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
         print(f"[DEBUG] Starting noise reduction with frame_length={frame_length}, hop_length={hop_length}, silence_threshold={silence_threshold}.")
         
         # Calculate energy of each frame
@@ -47,7 +47,7 @@ class NoiseReducer:
         
         return reduced_audio
 
-    def process_single_audio_file(self, file, frame_length=2048, hop_length=512, silence_threshold=0.1, prop_decrease_noisy=1.0, prop_decrease_normal=0.5):
+    def process_single_audio_file(self, file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
         file_path = os.path.join(self.input_dir, file)
         audio_data, sample_rate = librosa.load(file_path, sr=None)
 
@@ -61,7 +61,7 @@ class NoiseReducer:
 
         print(f"[DEBUG] Saved cleaned file as {new_file_path} and removed original file {file_path}.")
 
-    def process_audio_files(self, frame_length=2048, hop_length=512, silence_threshold=0.1, prop_decrease_noisy=1.0, prop_decrease_normal=0.5):
+    def process_audio_files(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
         files = [f for f in os.listdir(self.input_dir) if f.endswith('.wav') and not f.endswith('_cleaned.wav')]
         print(f"[DEBUG] Found {len(files)} files to process.")
 
@@ -71,7 +71,7 @@ class NoiseReducer:
 
         print(f"[DEBUG] Processed and cleaned {len(files)} files.")
 
-    def gradio_run(self, frame_length=1024, hop_length=256, silence_threshold=0.1, prop_decrease_noisy=1.0, prop_decrease_normal=0.5):
+    def gradio_run(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
         if not check_wav_files():
             return "ERROR: No .wav files found in the input directory. Please upload them and try again."
         
