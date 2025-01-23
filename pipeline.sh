@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #make directories
-mkdir wavs
-mkdir output
+mkdir -p wavs
+mkdir -p output
 #grant perms
 sudo chown -R "$USER":"$USER" wavs output
 chmod -R 755 wavs output
@@ -28,12 +28,18 @@ else
      echo "[OK] Dependencies already installed."
 fi
 
-#venv setup
-python3 -m venv venv
-source venv/bin/activate
+if [ ! -d "venv" ]; then
+    #venv setup
+    python3 -m venv venv
+    source venv/bin/activate
 
-#install pip packages
-pip install -r requirements.txt
+    #install pip packages
+    pip install -r requirements.txt
+else
+    echo "[OK] Virtual environment already exists."
+    source venv/bin/activate
+fi
+
 echo
 echo -e "\e[35m=======================================================\e[0m"
 echo Initializing the WebUI
