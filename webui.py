@@ -465,18 +465,21 @@ class LJSpeechDatasetUI:
                     
                     with gr.Column():
                         gr.Markdown("# Alpaca")
-
-                        gr.Textbox(label="Alpaca!", lines=10, value=r"""
-                           /\⌒⌒⌒/\
-                        (⦿('◞◟')⦿)
-                        (            )
-                        (            )       ◿
-                        (                    )
-                        (____________)
-                            ◤          ◤
-                                   
-                        yes its out of shape
-                        """, interactive=False)
+                        gr.Textbox(
+                            label="Alpaca!", 
+                            lines=10, 
+                            value=r"""
+                    /\⌒⌒⌒/\
+                    (⦿('◞◟')⦿)
+                    (            )
+                    (            )       ◿
+                    (                    )
+                    (____________)
+                        ◤          ◤
+                            
+                    yes its out of shape""",
+                            interactive=False
+                        )
 
             gr.Markdown("<div style='text-align: center;'>Something doesn't work? Feel free to open an issue on <a href='https://github.com/DominicTWHV/LJSpeech_Dataset_Generator'>GitHub</a></div>")
             gr.Markdown("<div style='text-align: center;'>Built by Dominic with ❤️</div>")
