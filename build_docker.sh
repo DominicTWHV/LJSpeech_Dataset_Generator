@@ -14,4 +14,4 @@ fi
 
 docker build -t LJSpeech_DSG .
 
-docker run cockatoo
+docker run LJSpeech_DSG
