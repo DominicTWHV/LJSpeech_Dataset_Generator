@@ -13,6 +13,6 @@ fi
     apt install -y docker.io
 fi
 
-docker build -t LJSpeech_DSG .
+docker build -t ljspeech_dsg .
 
-docker run LJSpeech_DSG
+docker run ljspeech_dsg
