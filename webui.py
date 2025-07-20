@@ -22,7 +22,7 @@ class LJSpeechDatasetUI:
         #denoiser values
         self.frame_length = 1024
         self.hop_length = 256
-        self.silence_threshold = 1.0
+        self.silence_threshold = 40
         self.prop_decrease_noisy = 1.0
         self.prop_decrease_normal = 0.5
 
