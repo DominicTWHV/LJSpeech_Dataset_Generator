@@ -88,7 +88,7 @@ class NoiseReducer:
         # Process files sequentially to ensure proper yielding to Gradio
         for file in files:
             try:
-                for log in self.process_single_audio_file(file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating=False):
+                for log in self.process_single_audio_file(file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
                     yield log
             except Exception as e:
                 yield f"[ERROR] Failed to process {file}: {str(e)}"

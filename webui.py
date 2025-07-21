@@ -303,15 +303,16 @@ class LJSpeechDatasetUI:
                     self.silence_threshold = silence_threshold
                     self.prop_decrease_noisy = prop_decrease_noisy
                     self.prop_decrease_normal = prop_decrease_normal
+                    self.use_spectral_gating = use_spectral_gating
 
-                    return f"Denoiser settings updated: \nFrame Length: {self.frame_length}, \nHop Length: {self.hop_length}, \nSilence Threshold: {self.silence_threshold}, \nPropagate Decrease (Noisy): {self.prop_decrease_noisy}, \nPropagate Decrease (Normal): {self.prop_decrease_normal}"
-    
+                    return f"Denoiser settings updated: \nFrame Length: {self.frame_length}, \nHop Length: {self.hop_length}, \nSilence Threshold: {self.silence_threshold}, \nPropagate Decrease (Noisy): {self.prop_decrease_noisy}, \nPropagate Decrease (Normal): {self.prop_decrease_normal}, \nUse Spectral Gating: {self.use_spectral_gating}"
+
                 def update_settings_display():
-                    return f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nPropagate Decrease (Noisy): {self.prop_decrease_noisy}\nPropagate Decrease (Normal): {self.prop_decrease_normal}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}"""
+                    return f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nPropagate Decrease (Noisy): {self.prop_decrease_noisy}\nPropagate Decrease (Normal): {self.prop_decrease_normal}\nUse Spectral Gating: {self.use_spectral_gating}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}"""
 
                 save_sep.click(update_separator, inputs=[separator_val], outputs=settings_update)
                 save_dur.click(update_duration, inputs=[min_duration_slider, max_duration_slider], outputs=settings_update)
-                save_denoiser.click(update_denoiser, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal], outputs=settings_update)
+                save_denoiser.click(update_denoiser, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating], outputs=settings_update)
                 
                 save_sep.click(fn=update_settings_display, inputs=[], outputs=settings_curr)
                 save_dur.click(fn=update_settings_display, inputs=[], outputs=settings_curr)
