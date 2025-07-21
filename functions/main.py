@@ -21,10 +21,10 @@ class MainProcess:
                 logs.append(f"[DEBUG] Transcript: {transcript}")
             except sr.UnknownValueError:
                 logs.append(f"[WARNING] Google Speech Recognition could not understand {audio_file}")
-                transcript = ""
+                transcript = "**NO TRANSCRIPT AVAILABLE, EDIT MANUALLY**"
             except sr.RequestError as e:
                 logs.append(f"[ERROR] Could not request results; {e}\n\nAre you connected to the internet?")
-                transcript = ""
+                transcript = "**NO TRANSCRIPT AVAILABLE, EDIT MANUALLY**"
         return transcript, logs
 
     def process_wav_files(self, input_dir, separator=','):
