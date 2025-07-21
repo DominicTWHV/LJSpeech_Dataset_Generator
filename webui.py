@@ -20,11 +20,12 @@ class LJSpeechDatasetUI:
         self.metadata = self._load_metadata()
 
         #denoiser values
-        self.frame_length = 1024
-        self.hop_length = 256
-        self.silence_threshold = 40
+        self.frame_length = 2048
+        self.hop_length = 1024
+        self.silence_threshold = 0.5
         self.prop_decrease_noisy = 1.0
         self.prop_decrease_normal = 0.5
+        self.use_hardware_acceleration = False  #pytorch spectral gating
 
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
@@ -199,7 +200,7 @@ class LJSpeechDatasetUI:
                         frame_length = gr.Slider(
                             label="Frame Length",
                             minimum=256,
-                            maximum=4096,
+                            maximum=8192,
                             step=128,
                             value=self.frame_length
                         )
@@ -207,16 +208,16 @@ class LJSpeechDatasetUI:
                         hop_length = gr.Slider(
                             label="Hop Length",
                             minimum=64,
-                            maximum=1024,
+                            maximum=4096,
                             step=64,
                             value=self.hop_length
                         )
 
                         silence_threshold = gr.Slider(
-                            label="Silence Threshold (dB)",
-                            minimum=-60,
-                            maximum=60,
-                            step=1,
+                            label="Silence Threshold",
+                            minimum=0,
+                            maximum=1,
+                            step=0.05,
                             value=self.silence_threshold
                         )
 
@@ -234,6 +235,12 @@ class LJSpeechDatasetUI:
                             maximum=1.0,
                             step=0.05,
                             value=self.prop_decrease_normal
+                        )
+
+                        use_hardware_acceleration = gr.Checkbox(
+                            label="Use Accelerated Noise Reduction",
+                            info="Enable this if you have enough compute power to use PyTorch Spectral Gating.",
+                            value=self.use_hardware_acceleration
                         )
 
                         save_denoiser = gr.Button("Save", variant="secondary")
@@ -267,8 +274,8 @@ class LJSpeechDatasetUI:
                         settings_update = gr.Textbox(label="Output", lines=4, interactive=False)
                         settings_curr = gr.Textbox(
                             label="Current Settings",
-                            value=f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nPropagate Decrease (Noisy): {self.prop_decrease_noisy}\nPropagate Decrease (Normal): {self.prop_decrease_normal}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}""",
-                            lines=10, interactive=False
+                            value=f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nPropagate Decrease (Noisy): {self.prop_decrease_noisy}\nPropagate Decrease (Normal): {self.prop_decrease_normal}\nUse Spectral Gating: {self.use_hardware_acceleration}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}""",
+                            lines=12, interactive=False
                         )
                     
                     with gr.Column():
@@ -277,7 +284,7 @@ class LJSpeechDatasetUI:
 
                 pp_status = gr.Textbox(label="Output", lines=10, interactive=False)
             
-                pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal], outputs=pp_status)
+                pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_hardware_acceleration], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[min_duration_slider, max_duration_slider], outputs=pp_status)
                 pp_main.click(main_process.gradio_run, inputs=[separator_val], outputs=pp_status)
     
