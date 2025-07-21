@@ -187,8 +187,8 @@ class LJSpeechDatasetUI:
 
                     with gr.Column():
                         pp_filter = gr.Button("Step 2 - Filter Background Noise", variant="stop")
-                        gr.Markdown("_The noise filtering function is in beta and may cause issues. Use with caution, or skip directly to the next step._")
-                    
+                        gr.Markdown("Without using spectral gating, the quality of noise reduction will solely depend on the parameters you set. It's recommended to enable spectral gating if possible, or skip this step if not applicable.")
+
                     with gr.Column():
                         pp_main = gr.Button("Step 3 - Auto Transcript", variant="primary")
                         gr.Markdown("The final step or preprocessing. This will generate the metadata.csv file.")
