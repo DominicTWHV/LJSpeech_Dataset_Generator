@@ -297,7 +297,7 @@ class LJSpeechDatasetUI:
                     self.max_duration = max_duration
                     return f"Duration updated to: \n{min_duration}ms (min) \n{max_duration}ms (max)"
                 
-                def update_denoiser(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
+                def update_denoiser(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
                     self.frame_length = frame_length
                     self.hop_length = hop_length
                     self.silence_threshold = silence_threshold
