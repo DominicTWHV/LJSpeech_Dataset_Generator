@@ -1,3 +1,8 @@
+# THIS REPOSITORY IS BEING REWROTE AS OF JUL 21 2025
+It is recommended that you do NOT use this current version.
+
+It will be in an archived status until the rewrite is finished.
+
 # Overview
 
 Built for PiperTTS (custom model training) with a simple file structure:
