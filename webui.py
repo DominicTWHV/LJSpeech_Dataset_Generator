@@ -25,7 +25,7 @@ class LJSpeechDatasetUI:
         self.silence_threshold = 0.5
         self.prop_decrease_noisy = 1.0
         self.prop_decrease_normal = 0.5
-        self.use_hardware_acceleration = False  #pytorch spectral gating
+        self.use_spectral_gating = False  #pytorch spectral gating
 
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
@@ -237,10 +237,10 @@ class LJSpeechDatasetUI:
                             value=self.prop_decrease_normal
                         )
 
-                        use_hardware_acceleration = gr.Checkbox(
-                            label="Use Accelerated Noise Reduction",
-                            info="Enable this if you have enough compute power to use PyTorch Spectral Gating.",
-                            value=self.use_hardware_acceleration
+                        use_spectral_gating = gr.Checkbox(
+                            label="Use Spectral Gating",
+                            info="Enable this if you have enough compute power to use PyTorch Spectral Gating. This option will deem all other parameters above useless.",
+                            value=self.use_spectral_gating
                         )
 
                         save_denoiser = gr.Button("Save", variant="secondary")
@@ -274,7 +274,7 @@ class LJSpeechDatasetUI:
                         settings_update = gr.Textbox(label="Output", lines=4, interactive=False)
                         settings_curr = gr.Textbox(
                             label="Current Settings",
-                            value=f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nPropagate Decrease (Noisy): {self.prop_decrease_noisy}\nPropagate Decrease (Normal): {self.prop_decrease_normal}\nUse Spectral Gating: {self.use_hardware_acceleration}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}""",
+                            value=f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nPropagate Decrease (Noisy): {self.prop_decrease_noisy}\nPropagate Decrease (Normal): {self.prop_decrease_normal}\nUse Spectral Gating: {self.use_spectral_gating}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}""",
                             lines=12, interactive=False
                         )
                     
@@ -284,7 +284,7 @@ class LJSpeechDatasetUI:
 
                 pp_status = gr.Textbox(label="Output", lines=10, interactive=False)
             
-                pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_hardware_acceleration], outputs=pp_status)
+                pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[min_duration_slider, max_duration_slider], outputs=pp_status)
                 pp_main.click(main_process.gradio_run, inputs=[separator_val], outputs=pp_status)
     

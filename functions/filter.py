@@ -55,7 +55,7 @@ class NoiseReducer:
         #return audio and logs
         return reduced_audio, logs
 
-    def process_single_audio_file(self, file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_hardware_acceleration):
+    def process_single_audio_file(self, file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
         file_path = os.path.join(self.input_dir, file)
         new_filename = file.replace('.wav', '_cleaned.wav')
         new_file_path = os.path.join(self.input_dir, new_filename)
@@ -65,7 +65,7 @@ class NoiseReducer:
         sample_rate, audio_data = wavfile.read(file_path)
         yield f"Sample rate: {sample_rate}, Audio length: {len(audio_data)}"
         
-        if use_hardware_acceleration:
+        if use_spectral_gating:
             reduced_audio = nr.reduce_noise(y=audio_data, sr=sample_rate, nonstationary=True)
             wavfile.write(new_file_path, sample_rate, reduced_audio)
 
@@ -79,26 +79,26 @@ class NoiseReducer:
 
         yield f"[DEBUG] Saved cleaned file as {new_file_path} and removed original file {file_path}.\n=====================================\n"
 
-    def process_audio_files(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_hardware_acceleration):
+    def process_audio_files(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
         files = [f for f in os.listdir(self.input_dir) if f.endswith('.wav') and not f.endswith('_cleaned.wav')]
         yield f"[DEBUG] Found {len(files)} files to process.\n"
 
         # Process files sequentially to ensure proper yielding to Gradio
         for file in files:
             try:
-                for log in self.process_single_audio_file(file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_hardware_acceleration=False):
+                for log in self.process_single_audio_file(file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating=False):
                     yield log
             except Exception as e:
                 yield f"[ERROR] Failed to process {file}: {str(e)}"
 
         yield f"\n[OK] Finished filtering {len(files)} files."
 
-    def gradio_run(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_hardware_acceleration):
+    def gradio_run(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
         if not check_wav_files():
             yield "ERROR: No .wav files found in the input directory. Please upload them and try again."
             return
 
         logs = []
-        for log in self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_hardware_acceleration):
+        for log in self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
             logs.append(log)
             yield "\n".join(logs)
