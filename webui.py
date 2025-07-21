@@ -21,10 +21,10 @@ class LJSpeechDatasetUI:
 
         #denoiser values
         self.frame_length = 2048
-        self.hop_length = 1024
-        self.silence_threshold = 0.5
-        self.prop_decrease_noisy = 1.0
-        self.prop_decrease_normal = 0.5
+        self.hop_length = 512
+        self.silence_threshold = 0.1
+        self.prop_decrease_noisy = 0.9
+        self.prop_decrease_normal = 0.3
         self.use_spectral_gating = False  #pytorch spectral gating
 
     def _load_metadata(self):
