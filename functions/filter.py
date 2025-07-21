@@ -94,7 +94,7 @@ class NoiseReducer:
 
             if use_spectral_gating:
                 yield f"[DEBUG] Using PyTorch Spectral Gating for noise reduction. Processing file: {file_path}"
-                reduced_audio = nr.reduce_noise(y=audio_data, sr=sample_rate, nonstationary=True)
+                reduced_audio = nr.reduce_noise(y=audio_data, sr=sample_rate)
             else:
                 reduced_audio, reduction_logs = self.apply_dynamic_noise_reduction(
                     audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
