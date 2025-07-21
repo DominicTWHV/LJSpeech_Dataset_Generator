@@ -3,8 +3,6 @@ import noisereduce as nr
 import soundfile as sf
 import numpy as np
 
-from scipy.io import wavfile
-
 from functions.helper.run_san import check_wav_files
 
 class NoiseReducer:
@@ -12,47 +10,72 @@ class NoiseReducer:
         self.input_dir = input_dir
 
     def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
-        # Collect logs to yield later
         logs = []
-
-        energy = np.array([np.sum(np.abs(audio_data[i:i+frame_length]**2)) for i in range(0, len(audio_data), hop_length)])
-        max_energy = np.max(energy) if energy.size > 0 else 1  # Avoid division by zero
+        
+        original_dtype = audio_data.dtype
+        audio_float = audio_data.astype(np.float32)
+        if np.issubdtype(original_dtype, np.integer):
+            audio_float = audio_float / np.iinfo(original_dtype).max
+        
+        indices = list(range(0, len(audio_float), hop_length))
+        energy = []
+        
+        for i in indices:
+            frame_end = min(i + frame_length, len(audio_float))
+            frame = audio_float[i:frame_end]
+            if len(frame) > 0:
+                frame_energy = np.sum(frame**2)
+                energy.append(frame_energy)
+            else:
+                energy.append(0)
+        
+        energy = np.array(energy)
+        max_energy = np.max(energy) if energy.size > 0 else 1
         normalized_energy = energy / max_energy
 
-        indices = [i for i in range(0, len(audio_data), hop_length)]
-        noise_frames = [audio_data[i:i+frame_length] for idx, i in enumerate(indices) if normalized_energy[idx] < silence_threshold]
-
+        noise_frames = []
+        for idx, i in enumerate(indices):
+            if idx < len(normalized_energy) and normalized_energy[idx] < silence_threshold:
+                frame_end = min(i + frame_length, len(audio_float))
+                noise_frames.append(audio_float[i:frame_end])
+        
         if noise_frames:
             noise_profile = np.concatenate(noise_frames)
         else:
-            noise_profile = audio_data[:frame_length]
-
-        reduced_audio = np.array(audio_data)
-
-        #loop ver audio data
+            fallback_length = max(frame_length, len(audio_float) // 10)
+            noise_profile = audio_float[:fallback_length]
+            logs.append("[WARNING] No quiet frames found, using beginning of audio as noise profile")
+        
+        reduced_audio = np.array(audio_float)
+        
         for idx, i in enumerate(indices):
+            if idx >= len(normalized_energy):
+                break
+                
             start_idx = i
-            end_idx = min(i + frame_length, len(audio_data))
-            frame = audio_data[start_idx:end_idx]
-
-            if idx < len(normalized_energy):
-                if normalized_energy[idx] < silence_threshold:
-                    reduced_frame = nr.reduce_noise(y=frame, sr=sample_rate, y_noise=noise_profile, prop_decrease=prop_decrease_noisy)
-                else:
-                    reduced_frame = nr.reduce_noise(y=frame, sr=sample_rate, y_noise=noise_profile, prop_decrease=prop_decrease_normal)
-
-                # Ensure that reduced_frame is the same length as frame
+            end_idx = min(i + frame_length, len(audio_float))
+            frame = audio_float[start_idx:end_idx]
+            
+            prop_decrease = prop_decrease_noisy if normalized_energy[idx] < silence_threshold else prop_decrease_normal
+            
+            try:
+                reduced_frame = nr.reduce_noise(y=frame, sr=sample_rate, y_noise=noise_profile, prop_decrease=prop_decrease)
+                
                 if len(reduced_frame) != len(frame):
-                    # Adjust reduced_frame to match the original frame's length
                     reduced_frame = np.resize(reduced_frame, frame.shape)
-
+                
                 reduced_audio[start_idx:end_idx] = reduced_frame
-            else:
-                logs.append(f"[ERROR] Index {idx} out of bounds for normalized_energy, skipping frame.")
-
+                
+            except Exception as e:
+                logs.append(f"[WARNING] Failed to reduce noise for frame {idx}: {str(e)}")
+        
         logs.append(f"[DEBUG] Completed noise reduction for current audio data.")
-
-        #return audio and logs
+        
+        if np.issubdtype(original_dtype, np.integer):
+            max_val = np.iinfo(original_dtype).max
+            reduced_audio = np.clip(reduced_audio * max_val, np.iinfo(original_dtype).min, max_val)
+        
+        reduced_audio = reduced_audio.astype(original_dtype)
         return reduced_audio, logs
 
     def process_single_audio_file(self, file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
@@ -60,26 +83,33 @@ class NoiseReducer:
         new_filename = file.replace('.wav', '_cleaned.wav')
         new_file_path = os.path.join(self.input_dir, new_filename)
 
-        yield f"[DEBUG] Processing {file_path}."
+        try:
+            audio_data, sample_rate = sf.read(file_path)
+            
+            if audio_data.ndim > 1:
+                yield f"[DEBUG] Converting {audio_data.shape[1]}-channel audio to mono"
+                audio_data = np.mean(audio_data, axis=1)
+            
+            yield f"[DEBUG] Processing file: {file_path} with sample rate: {sample_rate}"
 
-        sample_rate, audio_data = wavfile.read(file_path)
-        yield f"Sample rate: {sample_rate}, Audio length: {len(audio_data)}"
-        
-        if use_spectral_gating:
-            yield f"[DEBUG] Using PyTorch Spectral Gating for noise reduction. Processing file: {file_path}"
-            reduced_audio = nr.reduce_noise(y=audio_data, sr=sample_rate, nonstationary=True)
-            wavfile.write(new_file_path, sample_rate, reduced_audio)
+            if use_spectral_gating:
+                yield f"[DEBUG] Using PyTorch Spectral Gating for noise reduction. Processing file: {file_path}"
+                reduced_audio = nr.reduce_noise(y=audio_data, sr=sample_rate, nonstationary=True)
+            else:
+                reduced_audio, reduction_logs = self.apply_dynamic_noise_reduction(
+                    audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
+                for log in reduction_logs:
+                    yield log
 
-        else:
-            reduced_audio, reduction_logs = self.apply_dynamic_noise_reduction(
-                audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
-
-            for log in reduction_logs:
-                yield log
-            wavfile.write(new_file_path, sample_rate, reduced_audio)
+            sf.write(new_file_path, reduced_audio, sample_rate)
             os.remove(file_path)
-
-        yield f"[DEBUG] Saved cleaned file as {new_file_path} and removed original file {file_path}.\n=====================================\n"
+            yield f"[DEBUG] Saved cleaned file as {new_file_path} and removed original file {file_path}."
+            
+        except Exception as e:
+            yield f"[ERROR] Failed to process {file_path}: {str(e)}"
+            return
+            
+        yield "=====================================\n"
 
     def process_audio_files(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
         files = [f for f in os.listdir(self.input_dir) if f.endswith('.wav') and not f.endswith('_cleaned.wav')]
