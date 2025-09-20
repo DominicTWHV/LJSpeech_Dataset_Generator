@@ -2,7 +2,7 @@
 
 Built for PiperTTS (custom model training) with a simple file structure:
 
-```
+```csv
 dataset.zip/
 ├── metadata.csv
 └── wavs/
@@ -27,18 +27,21 @@ Tested on Ubuntu Server 22.04 (Python 3.10.12) and Ubuntu Desktop 24.04 (Python 
 **No Windows support, sorry!**
 
 1. Clone it:
-   ```
+   ```bash
    git clone https://github.com/DominicTWHV/LJSpeech_Dataset_Generator.git
    ```
+   
 2. Set it up:
-   ```
+   ```bash
    cd LJSpeech_Dataset_Generator
    sudo chmod +x pipeline.sh
    ```
+   
 3. Run it:
-   ```
+   ```bash
    ./pipeline.sh
    ```
+   
    Then hop onto the Gradio WebUI @ port 7860. The server listens on 0.0.0.0:7860 by default.
 
 ---
@@ -46,7 +49,7 @@ Tested on Ubuntu Server 22.04 (Python 3.10.12) and Ubuntu Desktop 24.04 (Python 
 # Post-Processing
 
 Move `dataset.zip` to your training directory:
-```
+```bash
 mv /output/dataset.zip /path/to/training/dir
 unzip dataset.zip
 ```
