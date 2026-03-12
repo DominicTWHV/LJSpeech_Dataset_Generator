@@ -9,7 +9,7 @@ class Janitor:
         wavs_dir = os.path.join(root_dir, 'wavs')
         metadata_file = os.path.join(root_dir, 'metadata.csv')
 
-        dataset_file = os.path.join(root_dir, 'output/dataset.zip')
+        dataset_file = os.path.join(root_dir, 'output', 'dataset.zip')
 
         wavs_deleted = 0
         if os.path.exists(wavs_dir):

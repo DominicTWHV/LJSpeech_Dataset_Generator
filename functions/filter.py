@@ -11,6 +11,9 @@ class NoiseReducer:
 
     def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
         logs = []
+        if len(audio_data) == 0:
+            logs.append("[WARNING] Audio file is empty; skipping noise reduction")
+            return audio_data, logs
         
         original_dtype = audio_data.dtype
         audio_float = audio_data.astype(np.float32)
@@ -30,8 +33,11 @@ class NoiseReducer:
                 energy.append(0)
         
         energy = np.array(energy)
-        max_energy = np.max(energy) if energy.size > 0 else 1
-        normalized_energy = energy / max_energy
+        max_energy = np.max(energy) if energy.size > 0 else 0
+        if max_energy > 0:
+            normalized_energy = energy / max_energy
+        else:
+            normalized_energy = np.zeros_like(energy, dtype=np.float32)
 
         noise_frames = []
         for idx, i in enumerate(indices):
@@ -112,7 +118,14 @@ class NoiseReducer:
         yield "=====================================\n"
 
     def process_audio_files(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
-        files = [f for f in os.listdir(self.input_dir) if f.endswith('.wav') and not f.endswith('_cleaned.wav')]
+        if not os.path.isdir(self.input_dir):
+            yield f"[ERROR] Input directory not found: {self.input_dir}"
+            return
+
+        files = sorted(
+            f for f in os.listdir(self.input_dir)
+            if f.lower().endswith('.wav') and not f.lower().endswith('_cleaned.wav')
+        )
         yield f"[DEBUG] Found {len(files)} files to process.\n"
 
         # Process files sequentially to ensure proper yielding to Gradio

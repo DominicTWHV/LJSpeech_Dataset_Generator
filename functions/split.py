@@ -1,9 +1,7 @@
 import os
 import re
 import math
-import tempfile
 from pydub import AudioSegment
-import speech_recognition as sr
 
 from functions.helper.run_san import check_wav_files
 
@@ -12,11 +10,15 @@ class AudioSplitter:
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.processed_pattern = re.compile(r'^(.*)_processed(\d+)\.wav$')
-        self.recognizer = sr.Recognizer()
 
     def split_audio(self, filepath, min_chunk_duration, max_chunk_duration):
+        logs = []
         audio = AudioSegment.from_wav(filepath)
         total_duration = len(audio)
+        if total_duration <= 0:
+            logs.append(f"[WARNING] Skipping empty file: {os.path.basename(filepath)}")
+            return logs, False
+
         full_chunks = total_duration // max_chunk_duration
         leftover = total_duration % max_chunk_duration
 
@@ -25,64 +27,64 @@ class AudioSplitter:
         else:
             num_chunks = full_chunks + 1 if leftover else full_chunks
 
+        if num_chunks <= 0:
+            num_chunks = 1
+
         chunk_length = math.ceil(total_duration / num_chunks)
         current_pos = 0
+        exported_chunks = 0
 
-        yield f"[DEBUG] Splitting {os.path.basename(filepath)} into {num_chunks} chunks, each approximately {chunk_length} ms long."
+        logs.append(f"[DEBUG] Splitting {os.path.basename(filepath)} into {num_chunks} chunks, each approximately {chunk_length} ms long.")
 
         for i in range(num_chunks):
             end_pos = min(current_pos + chunk_length, total_duration)
             chunk_audio = audio[current_pos:end_pos]
 
-            try:
-                self._maybe_recognize(chunk_audio)
-            except Exception as e:
-                yield f"[ERROR] Error during speech recognition in chunk {i+1}: {str(e)}"
-
             out_name = f"{os.path.splitext(os.path.basename(filepath))[0]}_processed{i+1}.wav"
             output_path = os.path.join(self.output_dir, out_name)
             try:
                 chunk_audio.export(output_path, format="wav")
-                yield f"[DEBUG] Exported chunk {i+1} as {out_name}"
+                exported_chunks += 1
+                logs.append(f"[DEBUG] Exported chunk {i+1} as {out_name}")
             except Exception as e:
-                yield f"[ERROR] Failed to export chunk {i+1} as {out_name}: {str(e)}"
-                continue  # Skip to the next chunk if export fails
+                logs.append(f"[ERROR] Failed to export chunk {i+1} as {out_name}: {str(e)}")
+                continue
 
             current_pos = end_pos
             if current_pos >= total_duration:
                 break
 
-    def _maybe_recognize(self, chunk_audio):
-        # Use a temporary file to store the chunk for recognition
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tfile:
-            chunk_audio.export(tfile.name, format="wav")
-            with sr.AudioFile(tfile.name) as source:
-                audio_data = self.recognizer.record(source)
-                try:
-                    self.recognizer.recognize_google(audio_data)
-                except sr.UnknownValueError:
-                    pass
-                except sr.RequestError as e:
-                    pass
+        return logs, exported_chunks > 0
 
     def process_directory(self, min_chunk_duration, max_chunk_duration):
+        if min_chunk_duration <= 0 or max_chunk_duration <= 0:
+            yield "[ERROR] Chunk durations must be greater than zero."
+            return
+
+        if min_chunk_duration > max_chunk_duration:
+            yield "[ERROR] Minimum chunk duration cannot be greater than maximum chunk duration."
+            return
+
         files_to_process = [
             f for f in os.listdir(self.input_dir)
-            if f.endswith('.wav') and not self.processed_pattern.match(f)
+            if f.lower().endswith('.wav') and not self.processed_pattern.match(f)
         ]
         file_count = len(files_to_process)
+        successfully_split = []
 
-        # Process each file
         for filename in files_to_process:
             filepath = os.path.join(self.input_dir, filename)
             yield f"[DEBUG] Splitting {filename}"
             try:
-                for log in self.split_audio(filepath, min_chunk_duration, max_chunk_duration):
+                split_logs, was_split = self.split_audio(filepath, min_chunk_duration, max_chunk_duration)
+                for log in split_logs:
                     yield log
+                if was_split:
+                    successfully_split.append(filename)
             except Exception as e:
                 yield f"[ERROR] Failed to split {filename}: {str(e)}"
 
-        for filename in files_to_process:
+        for filename in successfully_split:
             filepath = os.path.join(self.input_dir, filename)
             if os.path.isfile(filepath):
                 try:

@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import gradio as gr
 import shutil
+from pathlib import Path
 
 from functions.filter import NoiseReducer
 from functions.split import AudioSplitter
@@ -12,8 +13,8 @@ from functions.helper.janitor import Janitor
 
 class LJSpeechDatasetUI:
     def __init__(self, dataset_dir, metadata_file):
-        self.dataset_dir = dataset_dir
-        self.metadata_file = metadata_file
+        self.dataset_dir = str(Path(dataset_dir))
+        self.metadata_file = str(Path(metadata_file))
         self.separator = '|'
         self.min_duration = 4000 #both in miliseconds
         self.max_duration = 10000
@@ -29,38 +30,29 @@ class LJSpeechDatasetUI:
 
     def _load_metadata(self):
         if os.path.exists(self.metadata_file):
-            #read csv
-            df = pd.read_csv(self.metadata_file, sep=self.separator if self.separator else '|', header=None,names=["wav_filename", "transcript", "normalized_transcript"], dtype=str,)
+            try:
+                df = pd.read_csv(self.metadata_file, sep=self.separator if self.separator else '|', header=None, names=["wav_filename", "transcript", "normalized_transcript"], dtype=str)
+            except pd.errors.EmptyDataError:
+                return pd.DataFrame(columns=["filename", "transcript"])
             df["filename"] = df["wav_filename"].astype(str)
             df = df[["filename", "transcript"]]
             return df
-        else:
-            #return an empty DataFrame with specified columns
-            df = pd.DataFrame(columns=["filename", "transcript"])
-            return df
+        return pd.DataFrame(columns=["filename", "transcript"])
 
     def load_data(self):
-        try:
-            if not os.path.exists(self.dataset_dir):
-                return []
-            
-            audio_files = [f for f in os.listdir(self.dataset_dir) if f.endswith(".wav")]
-            if len(audio_files) == 0:
-                return []
-            
-            if isinstance(self.metadata, pd.DataFrame) and not self.metadata.empty:
-                meta_map = {os.path.basename(r["filename"]): r["transcript"] for _, r in self.metadata.iterrows()}
-            else:
-                meta_map = {}
-            #Debug statements
-            #print("Audio files:", audio_files)
-            #print("Metadata filenames:", self.metadata["filename"].tolist())
-            #print("Meta map:", meta_map)
-            data = [(os.path.join(self.dataset_dir, af), meta_map.get(af, "")) for af in audio_files]
-            #print("Data:", data)
-            return data
-        except Exception as e:
+        if not os.path.exists(self.dataset_dir):
             return []
+
+        audio_files = sorted(f for f in os.listdir(self.dataset_dir) if f.lower().endswith(".wav"))
+        if len(audio_files) == 0:
+            return []
+
+        if isinstance(self.metadata, pd.DataFrame) and not self.metadata.empty:
+            meta_map = {os.path.basename(r["filename"]): r["transcript"] for _, r in self.metadata.iterrows()}
+        else:
+            meta_map = {}
+
+        return [(os.path.join(self.dataset_dir, af), meta_map.get(af, "")) for af in audio_files]
 
     def update_metadata(self, audio_file, new_transcript):
         base_name = os.path.basename(audio_file)
@@ -68,7 +60,7 @@ class LJSpeechDatasetUI:
         if mask.any():
             self.metadata.loc[mask, "transcript"] = new_transcript
         else:
-            new_row = pd.DataFrame({"filename": [base_name], "transcript": [new_transcript]})
+            new_row = pd.DataFrame({"filename": [Path("wavs", base_name).as_posix()], "transcript": [new_transcript]})
             self.metadata = pd.concat([self.metadata, new_row], ignore_index=True)
         self.metadata.to_csv(self.metadata_file, sep=self.separator if self.separator else '|', index=False, header=False)
         return f"Transcript for {base_name} updated: {new_transcript}"
@@ -78,8 +70,10 @@ class LJSpeechDatasetUI:
         items_per_page = 10  #number of items to display per page
 
         def save_uploaded_files(file_paths):
-            if not os.path.exists(self.dataset_dir):
-                os.makedirs(self.dataset_dir)
+            if not file_paths:
+                return "No files uploaded."
+
+            os.makedirs(self.dataset_dir, exist_ok=True)
 
             try:
                 for temp_file_path in file_paths:
@@ -150,17 +144,17 @@ class LJSpeechDatasetUI:
             return "\n".join(audio_files)
         
         def handle_upload(file_paths):
-                    status = save_uploaded_files(file_paths)
-                    file_list_content = update_file_list()
-                    return status, file_list_content
+            status = save_uploaded_files(file_paths)
+            file_list_content = update_file_list()
+            return status, file_list_content
 
         with gr.Blocks(title="LJSpeech Dataset Generator", theme=gr.themes.Citrus()) as app:
             gr.Markdown("<div style='text-align: center;'><h1>LJSpeech Dataset Generator</h1></div>")
 
             noise_reducer = NoiseReducer()
             splitter = AudioSplitter()
-            main_process = MainProcess()
-            sanitycheck = SanityChecker()
+            main_process = MainProcess(input_dir=self.dataset_dir, metadata_file=self.metadata_file)
+            sanitycheck = SanityChecker(metadata_file=self.metadata_file, wav_directory=self.dataset_dir)
 
             with gr.Tab("File Upload"):
                 with gr.Row():
@@ -289,10 +283,14 @@ class LJSpeechDatasetUI:
                 pp_main.click(main_process.gradio_run, inputs=[separator_val], outputs=pp_status)
     
                 def update_separator(new_sep):
+                    if not new_sep or len(new_sep) != 1:
+                        return "Separator must be a single character."
                     self.separator = new_sep
                     return f"Separator updated to: \n{new_sep}"
                 
                 def update_duration(min_duration, max_duration):
+                    if min_duration > max_duration:
+                        return "Minimum duration cannot be greater than maximum duration."
                     self.min_duration = min_duration
                     self.max_duration = max_duration
                     return f"Duration updated to: \n{min_duration}ms (min) \n{max_duration}ms (max)"
