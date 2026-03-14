@@ -3,10 +3,11 @@ import pandas as pd
 import gradio as gr
 import shutil
 from pathlib import Path
+from pydub import AudioSegment
 
 from functions.filter import NoiseReducer
 from functions.split import AudioSplitter
-from functions.main import MainProcess
+from functions.main import MainProcess, ASREngine
 from functions.sanitycheck import SanityChecker
 
 from functions.helper.janitor import Janitor
@@ -24,8 +25,7 @@ class LJSpeechDatasetUI:
         self.frame_length = 2048
         self.hop_length = 512
         self.silence_threshold = 0.1
-        self.prop_decrease_noisy = 0.9
-        self.prop_decrease_normal = 0.3
+        self.noise_reduction_strength = 0.6
         self.use_spectral_gating = False  #pytorch spectral gating
 
     def _load_metadata(self):
@@ -69,23 +69,41 @@ class LJSpeechDatasetUI:
         #constants
         items_per_page = 10  #number of items to display per page
 
-        def save_uploaded_files(file_paths):
+        def save_uploaded_files(file_paths, auto_convert_mp3):
             if not file_paths:
                 return "No files uploaded."
 
             os.makedirs(self.dataset_dir, exist_ok=True)
+            allowed_ext = {".wav", ".mp3"} if auto_convert_mp3 else {".wav"}
+            converted = 0
+            copied = 0
 
             try:
                 for temp_file_path in file_paths:
                     file_name = os.path.basename(temp_file_path)
-                    
-                    if not file_name.endswith(".wav"):
-                        return "Only .wav files are allowed."
+                    ext = Path(file_name).suffix.lower()
 
-                    dest_file_path = os.path.join(self.dataset_dir, file_name)
-                    shutil.copy(temp_file_path, dest_file_path)
+                    if ext not in allowed_ext:
+                        fmt = ".wav and .mp3" if auto_convert_mp3 else ".wav"
+                        return f"Only {fmt} files are allowed."
 
-                return f"{len(file_paths)} file(s) uploaded successfully."
+                    if ext == ".mp3" and auto_convert_mp3:
+                        wav_name = Path(file_name).stem + ".wav"
+                        dest_file_path = os.path.join(self.dataset_dir, wav_name)
+                        audio = AudioSegment.from_mp3(temp_file_path)
+                        audio.export(dest_file_path, format="wav")
+                        converted += 1
+                    else:
+                        dest_file_path = os.path.join(self.dataset_dir, file_name)
+                        shutil.copy(temp_file_path, dest_file_path)
+                        copied += 1
+
+                parts = []
+                if copied:
+                    parts.append(f"{copied} .wav file(s) uploaded")
+                if converted:
+                    parts.append(f"{converted} .mp3 file(s) converted to .wav")
+                return ". ".join(parts) + "." if parts else "No files processed."
             except Exception as e:
                 return f"Error: {e}"
 
@@ -138,13 +156,14 @@ class LJSpeechDatasetUI:
             return inner
         
         def update_file_list():
-            if not os.path.exists(self.dataset_dir):
+            dataset_path = Path(self.dataset_dir)
+            if not dataset_path.exists():
                 return ""
-            audio_files = [f for f in os.listdir(self.dataset_dir) if f.endswith(".wav")]
+            audio_files = sorted(f.name for f in dataset_path.iterdir() if f.suffix.lower() == '.wav')
             return "\n".join(audio_files)
         
-        def handle_upload(file_paths):
-            status = save_uploaded_files(file_paths)
+        def handle_upload(file_paths, auto_convert_mp3):
+            status = save_uploaded_files(file_paths, auto_convert_mp3)
             file_list_content = update_file_list()
             return status, file_list_content
 
@@ -159,8 +178,13 @@ class LJSpeechDatasetUI:
             with gr.Tab("File Upload"):
                 with gr.Row():
                     with gr.Column():
-                        gr.Markdown("**Upload your .wav files here for pre-processing.**")
-                        upload_audio = gr.File(label="Upload .wav files", file_types=["audio"], file_count="multiple", type="filepath")
+                        gr.Markdown("**Upload your audio files here for pre-processing.**")
+                        auto_convert_mp3 = gr.Checkbox(
+                            label="Auto-convert MP3 to WAV",
+                            info="When enabled, .mp3 files are accepted and automatically converted to .wav on upload.",
+                            value=False,
+                        )
+                        upload_audio = gr.File(label="Upload audio files", file_types=["audio"], file_count="multiple", type="filepath")
                         upload_status = gr.Textbox(label="Output", interactive=False)
                         
                     with gr.Column():
@@ -169,7 +193,7 @@ class LJSpeechDatasetUI:
                         file_list_update = gr.Button("Update", variant="primary")
 
 
-                upload_audio.upload(handle_upload, inputs=upload_audio, outputs=[upload_status, file_list])
+                upload_audio.upload(handle_upload, inputs=[upload_audio, auto_convert_mp3], outputs=[upload_status, file_list])
                 file_list_update.click(update_file_list, inputs=[], outputs=file_list)
 
             with gr.Tab("Pre-Processing"):
@@ -181,7 +205,7 @@ class LJSpeechDatasetUI:
 
                     with gr.Column():
                         pp_filter = gr.Button("Step 2 - Filter Background Noise", variant="stop")
-                        gr.Markdown("Without using spectral gating, the quality of noise reduction will solely depend on the parameters you set. It's recommended to enable spectral gating if possible, or skip this step if not applicable.")
+                        gr.Markdown("Filters background noise while retaining crisp speech. Uses single-pass noise reduction with automatic noise profiling. Enable spectral gating for automatic processing, or adjust parameters manually.")
 
                     with gr.Column():
                         pp_main = gr.Button("Step 3 - Auto Transcript", variant="primary")
@@ -215,25 +239,17 @@ class LJSpeechDatasetUI:
                             value=self.silence_threshold
                         )
 
-                        prop_decrease_noisy = gr.Slider(
-                            label="Propagate Decrease (Noisy)",
-                            minimum=0.0,
-                            maximum=1.0,
-                            step=0.1,
-                            value=self.prop_decrease_noisy
-                        )
-
-                        prop_decrease_normal = gr.Slider(
-                            label="Propagate Decrease (Normal)",
+                        noise_reduction_strength = gr.Slider(
+                            label="Noise Reduction Strength",
                             minimum=0.0,
                             maximum=1.0,
                             step=0.05,
-                            value=self.prop_decrease_normal
+                            value=self.noise_reduction_strength
                         )
 
                         use_spectral_gating = gr.Checkbox(
                             label="Use Spectral Gating",
-                            info="Enable this if you have enough compute power to use PyTorch Spectral Gating. This option will deem all other parameters above useless.",
+                            info="Enable spectral gating for automatic noise profiling. Overrides manual parameters above.",
                             value=self.use_spectral_gating
                         )
 
@@ -262,25 +278,47 @@ class LJSpeechDatasetUI:
                         gr.Markdown("**Seperator Controls**")
                         separator_val = gr.Textbox(label="Separator", value="|", interactive=True)
                         save_sep = gr.Button("Save", variant="secondary")
+
+                        gr.Markdown("**ASR Settings**")
+                        asr_engine = gr.Dropdown(
+                            label="ASR Engine",
+                            choices=ASREngine.AVAILABLE_ENGINES,
+                            value=ASREngine.AVAILABLE_ENGINES[0],
+                        )
+                        asr_model_size = gr.Dropdown(
+                            label="Model Size (local only)",
+                            choices=ASREngine.MODEL_SIZES,
+                            value="base",
+                        )
+                        asr_language = gr.Dropdown(
+                            label="Language",
+                            choices=ASREngine.LANGUAGES,
+                            value="auto",
+                        )
+                        asr_device = gr.Dropdown(
+                            label="Device (local only)",
+                            choices=ASREngine.DEVICES,
+                            value="auto",
+                        )
                         
                     with gr.Column():
                         gr.Markdown("**Settings Status**")
                         settings_update = gr.Textbox(label="Output", lines=4, interactive=False)
                         settings_curr = gr.Textbox(
                             label="Current Settings",
-                            value=f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nPropagate Decrease (Noisy): {self.prop_decrease_noisy}\nPropagate Decrease (Normal): {self.prop_decrease_normal}\nUse Spectral Gating: {self.use_spectral_gating}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}""",
+                            value=f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nNoise Reduction Strength: {self.noise_reduction_strength}\nUse Spectral Gating: {self.use_spectral_gating}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}""",
                             lines=12, interactive=False
                         )
                     
                     with gr.Column():
                         gr.Markdown("**Settings Information**")
-                        gr.Markdown("Denoiser:\nParameter adjustments to filter background noise.\n\nChunking:\nAdjust the minimum and maximum duration for splitting audio files.\n\nSeparator:\nAdjust the separator for metadata.csv\n\n\n**You should leave all of these options alone if you don't understand these.**")
+                        gr.Markdown("Denoiser:\nParameter adjustments to filter background noise.\n\nChunking:\nAdjust the minimum and maximum duration for splitting audio files.\n\nSeparator:\nAdjust the separator for metadata.csv\n\nASR:\nConfigure the speech recognition engine. Local (faster-whisper) is recommended for speed and offline use. The model will be downloaded on first use.\n\n**You should leave all of these options alone if you don't understand these.**")
 
                 pp_status = gr.Textbox(label="Output", lines=10, interactive=False)
             
-                pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating], outputs=pp_status)
+                pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, noise_reduction_strength, use_spectral_gating], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[min_duration_slider, max_duration_slider], outputs=pp_status)
-                pp_main.click(main_process.gradio_run, inputs=[separator_val], outputs=pp_status)
+                pp_main.click(main_process.gradio_run, inputs=[separator_val, asr_engine, asr_model_size, asr_language, asr_device], outputs=pp_status)
     
                 def update_separator(new_sep):
                     if not new_sep or len(new_sep) != 1:
@@ -295,22 +333,21 @@ class LJSpeechDatasetUI:
                     self.max_duration = max_duration
                     return f"Duration updated to: \n{min_duration}ms (min) \n{max_duration}ms (max)"
                 
-                def update_denoiser(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
+                def update_denoiser(frame_length, hop_length, silence_threshold, noise_reduction_strength, use_spectral_gating):
                     self.frame_length = frame_length
                     self.hop_length = hop_length
                     self.silence_threshold = silence_threshold
-                    self.prop_decrease_noisy = prop_decrease_noisy
-                    self.prop_decrease_normal = prop_decrease_normal
+                    self.noise_reduction_strength = noise_reduction_strength
                     self.use_spectral_gating = use_spectral_gating
 
-                    return f"Denoiser settings updated: \nFrame Length: {self.frame_length}, \nHop Length: {self.hop_length}, \nSilence Threshold: {self.silence_threshold}, \nPropagate Decrease (Noisy): {self.prop_decrease_noisy}, \nPropagate Decrease (Normal): {self.prop_decrease_normal}, \nUse Spectral Gating: {self.use_spectral_gating}"
+                    return f"Denoiser settings updated: \nFrame Length: {self.frame_length}, \nHop Length: {self.hop_length}, \nSilence Threshold: {self.silence_threshold}, \nNoise Reduction Strength: {self.noise_reduction_strength}, \nUse Spectral Gating: {self.use_spectral_gating}"
 
                 def update_settings_display():
-                    return f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nPropagate Decrease (Noisy): {self.prop_decrease_noisy}\nPropagate Decrease (Normal): {self.prop_decrease_normal}\nUse Spectral Gating: {self.use_spectral_gating}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}"""
+                    return f"""Denoiser Settings:\nFrame Length: {self.frame_length}\nHop Length: {self.hop_length}\nSilence Threshold: {self.silence_threshold}\nNoise Reduction Strength: {self.noise_reduction_strength}\nUse Spectral Gating: {self.use_spectral_gating}\n\nChunking Duration:\nMinimum: {self.min_duration} ms | Maximum: {self.max_duration} ms\n\nSeparator:\n{self.separator}"""
 
                 save_sep.click(update_separator, inputs=[separator_val], outputs=settings_update)
                 save_dur.click(update_duration, inputs=[min_duration_slider, max_duration_slider], outputs=settings_update)
-                save_denoiser.click(update_denoiser, inputs=[frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating], outputs=settings_update)
+                save_denoiser.click(update_denoiser, inputs=[frame_length, hop_length, silence_threshold, noise_reduction_strength, use_spectral_gating], outputs=settings_update)
                 
                 save_sep.click(fn=update_settings_display, inputs=[], outputs=settings_curr)
                 save_dur.click(fn=update_settings_display, inputs=[], outputs=settings_curr)
@@ -391,38 +428,43 @@ class LJSpeechDatasetUI:
                         with gr.Accordion("File Upload", open=False):
                             gr.Markdown("""
                             1. Navigate to the `File Upload` tab
-                            2. Click to upload your .wav audio files 
-                            3. Files will appear in the list automatically
-                            4. Use the refresh button if needed to update the list
+                            2. Enable "Auto-convert MP3 to WAV" if you have .mp3 files
+                            3. Upload your .wav (or .mp3) audio files 
+                            4. Files will appear in the list automatically
+                            5. Use the refresh button if needed to update the list
                             """)
 
                         with gr.Accordion("Pre-Processing", open=False):
                             gr.Markdown("### Step 1: Audio Chunking")
                             gr.Markdown("""
                             - Required step to split long audio files into smaller segments
+                            - Splits at silence boundaries to avoid cutting mid-speech
                             - Configurable settings:
                                 - Minimum duration (ms)
                                 - Maximum duration (ms)
                             - Click "Step 1 - Chunking" to begin processing
                             """)
                             
-                            gr.Markdown("### Step 2: Noise Filtering (Beta)")
+                            gr.Markdown("### Step 2: Noise Filtering")
                             gr.Markdown("""
                             - Optional step to improve audio quality
-                            - Can be run before or after chunking
+                            - Single-pass noise reduction with automatic noise profiling
                             - Adjustable parameters:
-                                - Frame Length
-                                - Hop Length 
+                                - Frame Length & Hop Length
                                 - Silence Threshold
-                                - Noise Reduction Levels
-                            ⚠️ This feature is in beta - use with caution
+                                - Noise Reduction Strength
+                            - Enable Spectral Gating for fully automatic processing
                             """)
                             
                             gr.Markdown("### Step 3: Auto Transcription") 
                             gr.Markdown("""
                             - Generates metadata.csv containing transcripts
-                            - Uses AI speech recognition
+                            - Configurable ASR engine:
+                                - **Local (faster-whisper)**: Fast, offline, auto language detection
+                                - **Google Speech API**: Remote fallback (requires internet)
+                            - Adjustable model size, language, and compute device
                             - Configurable CSV separator character
+                            - Model is downloaded automatically on first use
                             """)
 
                         with gr.Accordion("Transcript Editing", open=False):
