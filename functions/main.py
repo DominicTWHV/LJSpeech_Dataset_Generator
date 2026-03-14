@@ -55,11 +55,53 @@ class ASREngine:
     def _ensure_model(self):
         if self._model is None:
             from faster_whisper import WhisperModel, BatchedInferencePipeline
-            self._model = WhisperModel(
-                self.model_size,
-                device=self.device,
-                compute_type=self.compute_type,
-            )
+
+            device = self.device
+            compute_type = self.compute_type
+            self._device_status = ""
+
+            if device == "auto":
+                # try in a cascade order
+                for attempt_device, attempt_ct in [
+                    ("cuda", "auto"),
+                    ("cuda", "float16"),
+                    ("cuda", "float32"),
+                    ("cpu", "int8"),
+                ]:
+                    
+                    try:
+                        self._model = WhisperModel(
+                            self.model_size, device=attempt_device, compute_type=attempt_ct,
+                        )
+
+                        self._device_status = (
+                            f"[INFO] Model loaded: device={attempt_device}, compute_type={attempt_ct}"
+                        )
+                        break
+
+                    except Exception as e:
+                        self._device_status = (
+                            f"[WARNING] Failed {attempt_device}/{attempt_ct}: {e}"
+                        )
+                        self._model = None
+                        continue
+
+                if self._model is None:
+                    raise RuntimeError(
+                        "Could not load model on any device. Last error: " + self._device_status
+                    )
+                
+            else:
+                if device == "cpu" and compute_type == "auto":
+                    compute_type = "int8"
+                self._model = WhisperModel(
+                    self.model_size, device=device, compute_type=compute_type,
+                )
+
+                self._device_status = (
+                    f"[INFO] Model loaded: device={device}, compute_type={compute_type}"
+                )
+
             self._batched_pipeline = BatchedInferencePipeline(model=self._model)
 
     def transcribe(self, audio_file):
@@ -74,6 +116,8 @@ class ASREngine:
         logs.append(f"[DEBUG] Transcribing ({self.model_size}): {name}")
         try:
             self._ensure_model()
+            if self._device_status:
+                logs.append(self._device_status)
             segments, info = self._batched_pipeline.transcribe(
                 str(audio_file),
                 batch_size=16,
@@ -152,6 +196,8 @@ class MainProcess:
 
         metadata = []
         languages_detected = set()
+        failed_count = 0
+        placeholder = "**NO TRANSCRIPT AVAILABLE, EDIT MANUALLY**"
 
         for wav_file in wav_files:
             yield f"[DEBUG] Processing: {wav_file.name}"
@@ -160,6 +206,8 @@ class MainProcess:
                 yield log
             if detected_lang:
                 languages_detected.add(detected_lang)
+            if transcript == placeholder:
+                failed_count += 1
             metadata.append([Path('wavs', wav_file.name).as_posix(), transcript])
 
         yield "[DEBUG] Writing metadata.csv..."
@@ -168,7 +216,17 @@ class MainProcess:
 
         lang_summary = ", ".join(sorted(languages_detected)) if languages_detected else "N/A"
         yield f"[DEBUG] Languages detected: {lang_summary}"
-        yield f"[DEBUG] metadata.csv generated successfully\n\n[OK] Finished processing {len(metadata)} files."
+
+        total = len(metadata)
+        succeeded = total - failed_count
+        if failed_count == 0:
+            yield f"[DEBUG] metadata.csv generated successfully\n\n[OK] Finished processing {total} files."
+        
+        elif failed_count == total:
+            yield f"[ERROR] All {total} files failed transcription. metadata.csv was written with placeholders.\n\n[FAIL] No usable transcripts were generated. Check your ASR settings and audio files."
+        
+        else:
+            yield f"[WARNING] {failed_count}/{total} files failed transcription (placeholders written).\n\n[OK] Finished processing {total} files ({succeeded} succeeded, {failed_count} failed)."
 
     def zip_output(self, output_filename=None):
         output_path = Path(output_filename) if output_filename else self.output_dir / 'dataset.zip'
