@@ -300,6 +300,11 @@ class LJSpeechDatasetUI:
                             choices=ASREngine.DEVICES,
                             value="auto",
                         )
+                        asr_compute_type = gr.Dropdown(
+                            label="Compute Type (local only)",
+                            choices=ASREngine.COMPUTE_TYPES,
+                            value="auto",
+                        )
                         
                     with gr.Column():
                         gr.Markdown("**Settings Status**")
@@ -312,13 +317,45 @@ class LJSpeechDatasetUI:
                     
                     with gr.Column():
                         gr.Markdown("**Settings Information**")
-                        gr.Markdown("Denoiser:\nParameter adjustments to filter background noise.\n\nChunking:\nAdjust the minimum and maximum duration for splitting audio files.\n\nSeparator:\nAdjust the separator for metadata.csv\n\nASR:\nConfigure the speech recognition engine. Local (faster-whisper) is recommended for speed and offline use. The model will be downloaded on first use.\n\n**You should leave all of these options alone if you don't understand these.**")
+                        gr.Markdown("""**Denoiser:**
+Parameter adjustments to filter background noise.
+
+**Chunking:**
+Adjust the minimum and maximum duration for splitting audio files. Splits at silence boundaries to avoid cutting mid-speech.
+
+**Separator:**
+Adjust the separator character for metadata.csv
+
+**ASR Settings:**
+Configure the speech recognition engine.
+
+- **Engine**: Local (faster-whisper) is recommended for speed and offline use. Google Speech API is a remote fallback. Model is downloaded on first use.
+- **Model Size**: Larger models are more accurate but slower and use more memory.
+  - `tiny` — Fastest, least accurate
+  - `base` — Good balance (default)
+  - `small` / `medium` — Better accuracy
+  - `large-v3` — Best accuracy, slowest
+- **Language**: Set to `auto` for automatic detection, or pick a specific language code.
+- **Device**: Where the model runs.
+  - `auto` — Tries CUDA first, falls back to CPU
+  - `cpu` — Force CPU (always works)
+  - `cuda` — Force NVIDIA GPU (requires CUDA)
+- **Compute Type**: Precision for model inference.
+  - `auto` — Let the engine decide
+  - `int8` — Fastest on CPU, recommended for CPU-only
+  - `int8_float16` — Mixed precision (GPU, compute capability ≥ 6.1)
+  - `int8_float32` — Mixed precision (broader GPU support)
+  - `int16` — Half-integer precision
+  - `float16` — Half-float (GPU only)
+  - `float32` — Full precision, safest fallback
+
+**You should leave all of these options alone if you don't understand them.**""")
 
                 pp_status = gr.Textbox(label="Output", lines=10, interactive=False)
             
                 pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, noise_reduction_strength, use_spectral_gating], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[min_duration_slider, max_duration_slider], outputs=pp_status)
-                pp_main.click(main_process.gradio_run, inputs=[separator_val, asr_engine, asr_model_size, asr_language, asr_device], outputs=pp_status)
+                pp_main.click(main_process.gradio_run, inputs=[separator_val, asr_engine, asr_model_size, asr_language, asr_device, asr_compute_type], outputs=pp_status)
     
                 def update_separator(new_sep):
                     if not new_sep or len(new_sep) != 1:
