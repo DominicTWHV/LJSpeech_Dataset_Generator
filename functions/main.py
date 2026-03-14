@@ -1,11 +1,53 @@
 import os
 import re
+import ctypes
+import site
 import pandas as pd
 import wave
 import zipfile
 from pathlib import Path
 
 from functions.helper.run_san import check_wav_files
+
+
+def _load_pip_cuda_libraries():
+    lib_dirs = []
+
+    for site_dir in site.getsitepackages():
+        base = Path(site_dir) / "nvidia"
+        for subdir in ("cuda_runtime", "cublas", "cudnn"):
+            candidate = base / subdir / "lib"
+            if candidate.is_dir() and candidate not in lib_dirs:
+                lib_dirs.append(candidate)
+
+    # keep paths visible for debugging needs
+    current = [entry for entry in os.environ.get("LD_LIBRARY_PATH", "").split(":") if entry]
+    merged = [str(path) for path in lib_dirs if str(path) not in current] + current
+    if merged:
+        os.environ["LD_LIBRARY_PATH"] = ":".join(merged)
+
+    # preload by absolute path so dependency resolution works even when loader does not re-read LD_LIBRARY_PATH changes made after process startup.
+    preload_names = [
+        "libcudart.so.12",
+        "libcublasLt.so.12",
+        "libcublas.so.12",
+        "libcudnn.so.9",
+    ]
+
+    for lib_name in preload_names:
+        for lib_dir in lib_dirs:
+            lib_path = lib_dir / lib_name
+            if lib_path.is_file():
+                try:
+                    ctypes.CDLL(str(lib_path), mode=ctypes.RTLD_GLOBAL)
+
+                except OSError:
+                    pass
+
+                break
+
+
+_load_pip_cuda_libraries()
 
 
 class ASREngine:
@@ -97,15 +139,94 @@ class ASREngine:
             else:
                 if device == "cpu" and compute_type == "auto":
                     compute_type = "int8"
-                self._model = WhisperModel(
-                    self.model_size, device=device, compute_type=compute_type,
-                )
 
-                self._device_status = (
-                    f"[INFO] Model loaded: device={device}, compute_type={compute_type}"
-                )
+                if device == "cuda":
+                    attempt_order = [compute_type]
+                    if "auto" not in attempt_order:
+                        attempt_order.append("auto")
+                    if "float32" not in attempt_order:
+                        attempt_order.append("float32")
+
+                    last_error = None
+                    for attempt_ct in attempt_order:
+                        try:
+                            self._model = WhisperModel(
+                                self.model_size, device=device, compute_type=attempt_ct,
+                            )
+                            self.compute_type = attempt_ct
+                            self._device_status = (
+                                f"[INFO] Model loaded: device={device}, compute_type={attempt_ct}"
+                            )
+                            break
+                        except Exception as e:
+                            last_error = e
+                            self._model = None
+                            continue
+
+                    if self._model is None:
+                        raise RuntimeError(
+                            f"Could not load CUDA model with compute_type={compute_type}. Last error: {last_error}"
+                        )
+
+                else:
+                    self._model = WhisperModel(
+                        self.model_size, device=device, compute_type=compute_type,
+                    )
+
+                    self._device_status = (
+                        f"[INFO] Model loaded: device={device}, compute_type={compute_type}"
+                    )
 
             self._batched_pipeline = BatchedInferencePipeline(model=self._model)
+
+    @staticmethod
+    def _is_cuda_library_error(error):
+        message = str(error).lower()
+        cuda_error_markers = [
+            "libcublas.so",
+            "libcudnn",
+            "libcuda.so",
+            "cublas",
+            "cudnn",
+            "cuda",
+        ]
+
+        return any(marker in message for marker in cuda_error_markers)
+
+    def _consume_transcribe_result(self, audio_file, name, logs):
+        detected_language = None
+        segments, info = self._batched_pipeline.transcribe(
+            str(audio_file),
+            batch_size=16,
+            language=self.language,
+        )
+        detected_language = info.language
+        logs.append(
+            f"[DEBUG] Language: {detected_language} ({info.language_probability:.0%})"
+        )
+        transcript = " ".join(seg.text for seg in segments).strip()
+        if transcript:
+            logs.append(f"[DEBUG] Transcript: {transcript}")
+
+        else:
+            transcript = "**NO TRANSCRIPT AVAILABLE, EDIT MANUALLY**"
+            logs.append(f"[WARNING] Empty transcript for {name}")
+
+        return transcript, detected_language
+
+    def _activate_cpu_fallback(self, logs):
+        from faster_whisper import WhisperModel, BatchedInferencePipeline
+
+        self.device = "cpu"
+        self.compute_type = "int8"
+        self._model = WhisperModel(
+            self.model_size, device=self.device, compute_type=self.compute_type,
+        )
+        self._batched_pipeline = BatchedInferencePipeline(model=self._model)
+        self._device_status = (
+            "[WARNING] CUDA runtime not available. Falling back to CPU/int8 for this run."
+        )
+        logs.append(self._device_status)
 
     def transcribe(self, audio_file):
         if self.engine == self.ENGINE_LOCAL:
@@ -121,22 +242,34 @@ class ASREngine:
             self._ensure_model()
             if self._device_status:
                 logs.append(self._device_status)
-            segments, info = self._batched_pipeline.transcribe(
-                str(audio_file),
-                batch_size=16,
-                language=self.language,
+
+            transcript, detected_language = self._consume_transcribe_result(
+                audio_file=audio_file,
+                name=name,
+                logs=logs,
             )
-            detected_language = info.language
-            logs.append(
-                f"[DEBUG] Language: {detected_language} ({info.language_probability:.0%})"
-            )
-            transcript = " ".join(seg.text for seg in segments).strip()
-            if transcript:
-                logs.append(f"[DEBUG] Transcript: {transcript}")
-            else:
-                transcript = "**NO TRANSCRIPT AVAILABLE, EDIT MANUALLY**"
-                logs.append(f"[WARNING] Empty transcript for {name}")
+
         except Exception as e:
+            if self.device in {"auto", "cuda"} and self._is_cuda_library_error(e):
+                logs.append(
+                    f"[WARNING] CUDA backend failed for {name}: {e}"
+                )
+
+                try:
+                    self._activate_cpu_fallback(logs)
+                    transcript, detected_language = self._consume_transcribe_result(
+                        audio_file=audio_file,
+                        name=name,
+                        logs=logs,
+                    )
+
+                    return transcript, detected_language, logs
+                
+                except Exception as cpu_fallback_error:
+                    logs.append(
+                        f"[ERROR] CPU fallback also failed for {name}: {cpu_fallback_error}"
+                    )
+
             logs.append(f"[ERROR] Transcription failed for {name}: {e}")
             transcript = "**NO TRANSCRIPT AVAILABLE, EDIT MANUALLY**"
         return transcript, detected_language, logs
