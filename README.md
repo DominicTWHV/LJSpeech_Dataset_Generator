@@ -24,17 +24,17 @@ wavs/<name>_processed<index>.wav|<transcript>
 # Setup
 
 Tested on Ubuntu Server 22.04 (Python 3.10.12) and Ubuntu Desktop 24.04 (Python 3.12.3). Should run fine on Debian-based systems.  
-**No Windows support, sorry!**
+**No (official) Windows support, sorry!**
 
 1. Clone it:
    ```bash
    git clone https://github.com/DominicTWHV/LJSpeech_Dataset_Generator.git
    ```
    
-2. Set it up:
+2. Setup:
    ```bash
    cd LJSpeech_Dataset_Generator
-   sudo chmod +x pipeline.sh
+   chmod +x pipeline.sh
    ```
    
 3. Run it:
@@ -42,7 +42,7 @@ Tested on Ubuntu Server 22.04 (Python 3.10.12) and Ubuntu Desktop 24.04 (Python 
    ./pipeline.sh
    ```
    
-   Then hop onto the Gradio WebUI @ port 7860. The server listens on 0.0.0.0:7860 by default.
+   Then hop onto the Gradio WebUI @ port 7860. The server listens on 0.0.0.0:7860 by default. For local use, connect at https://127.0.0.1:7860/ .
 
 ---
 
