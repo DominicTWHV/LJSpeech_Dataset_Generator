@@ -1,149 +1,164 @@
 import os
+import tempfile
 import noisereduce as nr
 import soundfile as sf
 import numpy as np
+from pathlib import Path
 
 from functions.helper.run_san import check_wav_files
 
+
 class NoiseReducer:
     def __init__(self, input_dir='wavs/'):
-        self.input_dir = input_dir
+        self.input_dir = Path(input_dir)
 
-    def apply_dynamic_noise_reduction(self, audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal):
+    @staticmethod
+    def _estimate_noise_profile(audio, sample_rate, frame_length, hop_length, silence_threshold):
+        """Estimate a noise profile from quiet sections of the audio."""
+        rms_values = []
+        indices = list(range(0, len(audio), hop_length))
+
+        for i in indices:
+            frame = audio[i:i + frame_length]
+            if len(frame) > 0:
+                rms_values.append(np.sqrt(np.mean(frame ** 2)))
+            else:
+                rms_values.append(0.0)
+
+        rms_values = np.array(rms_values)
+        max_rms = np.max(rms_values) if rms_values.size > 0 else 0
+
+        if max_rms <= 0:
+            return audio[:max(frame_length, len(audio) // 10)]
+
+        normalized_rms = rms_values / max_rms
+        noise_frames = []
+        for idx, i in enumerate(indices):
+            if idx < len(normalized_rms) and normalized_rms[idx] < silence_threshold:
+                noise_frames.append(audio[i:i + frame_length])
+
+        if noise_frames:
+            return np.concatenate(noise_frames)
+        return audio[:max(frame_length, len(audio) // 10)]
+
+    def reduce_noise_single_pass(self, audio_data, sample_rate, frame_length,
+                                  hop_length, silence_threshold, noise_reduction_strength):
+        """Single-pass noise reduction that filters noise while retaining crisp speech."""
         logs = []
         if len(audio_data) == 0:
             logs.append("[WARNING] Audio file is empty; skipping noise reduction")
             return audio_data, logs
-        
+
         original_dtype = audio_data.dtype
         audio_float = audio_data.astype(np.float32)
         if np.issubdtype(original_dtype, np.integer):
             audio_float = audio_float / np.iinfo(original_dtype).max
-        
-        indices = list(range(0, len(audio_float), hop_length))
-        energy = []
-        
-        for i in indices:
-            frame_end = min(i + frame_length, len(audio_float))
-            frame = audio_float[i:frame_end]
-            if len(frame) > 0:
-                frame_energy = np.sum(frame**2)
-                energy.append(frame_energy)
-            else:
-                energy.append(0)
-        
-        energy = np.array(energy)
-        max_energy = np.max(energy) if energy.size > 0 else 0
-        if max_energy > 0:
-            normalized_energy = energy / max_energy
-        else:
-            normalized_energy = np.zeros_like(energy, dtype=np.float32)
 
-        noise_frames = []
-        for idx, i in enumerate(indices):
-            if idx < len(normalized_energy) and normalized_energy[idx] < silence_threshold:
-                frame_end = min(i + frame_length, len(audio_float))
-                noise_frames.append(audio_float[i:frame_end])
-        
-        if noise_frames:
-            noise_profile = np.concatenate(noise_frames)
-        else:
-            fallback_length = max(frame_length, len(audio_float) // 10)
-            noise_profile = audio_float[:fallback_length]
-            logs.append("[WARNING] No quiet frames found, using beginning of audio as noise profile")
-        
-        reduced_audio = np.array(audio_float)
-        
-        for idx, i in enumerate(indices):
-            if idx >= len(normalized_energy):
-                break
-                
-            start_idx = i
-            end_idx = min(i + frame_length, len(audio_float))
-            frame = audio_float[start_idx:end_idx]
-            
-            prop_decrease = prop_decrease_noisy if normalized_energy[idx] < silence_threshold else prop_decrease_normal
-            
-            try:
-                reduced_frame = nr.reduce_noise(y=frame, sr=sample_rate, y_noise=noise_profile, prop_decrease=prop_decrease)
-                
-                if len(reduced_frame) != len(frame):
-                    reduced_frame = np.resize(reduced_frame, frame.shape)
-                
-                reduced_audio[start_idx:end_idx] = reduced_frame
-                
-            except Exception as e:
-                logs.append(f"[WARNING] Failed to reduce noise for frame {idx}: {str(e)}")
-        
-        logs.append(f"[DEBUG] Completed noise reduction for current audio data.")
-        
+        noise_profile = self._estimate_noise_profile(
+            audio_float, sample_rate, frame_length, hop_length, silence_threshold
+        )
+        logs.append(f"[DEBUG] Noise profile: {len(noise_profile)} samples from quiet sections")
+
+        reduced = nr.reduce_noise(
+            y=audio_float,
+            sr=sample_rate,
+            y_noise=noise_profile,
+            prop_decrease=noise_reduction_strength,
+            n_fft=frame_length,
+            hop_length=hop_length,
+        )
+        logs.append("[DEBUG] Single-pass noise reduction complete")
+
         if np.issubdtype(original_dtype, np.integer):
             max_val = np.iinfo(original_dtype).max
-            reduced_audio = np.clip(reduced_audio * max_val, np.iinfo(original_dtype).min, max_val)
-        
-        reduced_audio = reduced_audio.astype(original_dtype)
-        return reduced_audio, logs
+            reduced = np.clip(reduced * max_val, np.iinfo(original_dtype).min, max_val)
 
-    def process_single_audio_file(self, file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
-        file_path = os.path.join(self.input_dir, file)
-        new_filename = file.replace('.wav', '_cleaned.wav')
-        new_file_path = os.path.join(self.input_dir, new_filename)
+        return reduced.astype(original_dtype), logs
+
+    def process_single_audio_file(self, file_path, frame_length, hop_length,
+                                   silence_threshold, noise_reduction_strength,
+                                   use_spectral_gating):
+        """Process a single audio file with atomic temp-file writes."""
+        file_path = Path(file_path)
 
         try:
             audio_data, sample_rate = sf.read(file_path)
-            
-            if audio_data.ndim > 1:
-                yield f"[DEBUG] Converting {audio_data.shape[1]}-channel audio to mono"
-                audio_data = np.mean(audio_data, axis=1)
-            
-            yield f"[DEBUG] Processing file: {file_path} with sample rate: {sample_rate}"
+        except Exception as e:
+            yield f"[ERROR] Failed to read {file_path.name}: {e}"
+            return
 
+        if audio_data.ndim > 1:
+            yield f"[DEBUG] Converting {audio_data.shape[1]}-channel audio to mono"
+            audio_data = np.mean(audio_data, axis=1)
+
+        yield f"[DEBUG] Processing: {file_path.name} (sr={sample_rate})"
+
+        try:
             if use_spectral_gating:
-                yield f"[DEBUG] Using PyTorch Spectral Gating for noise reduction. Processing file: {file_path}"
+                yield "[DEBUG] Using spectral gating for noise reduction"
                 reduced_audio = nr.reduce_noise(y=audio_data, sr=sample_rate)
             else:
-                reduced_audio, reduction_logs = self.apply_dynamic_noise_reduction(
-                    audio_data, sample_rate, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal)
+                reduced_audio, reduction_logs = self.reduce_noise_single_pass(
+                    audio_data, sample_rate, frame_length, hop_length,
+                    silence_threshold, noise_reduction_strength,
+                )
                 for log in reduction_logs:
                     yield log
-
-            sf.write(new_file_path, reduced_audio, sample_rate)
-            os.remove(file_path)
-            yield f"[DEBUG] Saved cleaned file as {new_file_path} and removed original file {file_path}."
-            
         except Exception as e:
-            yield f"[ERROR] Failed to process {file_path}: {str(e)}"
+            yield f"[ERROR] Noise reduction failed for {file_path.name}: {e}"
             return
-            
+
+        # Write to temp file, then atomically replace original
+        tmp_path = None
+        try:
+            tmp_fd, tmp_path = tempfile.mkstemp(suffix='.wav', dir=file_path.parent)
+            os.close(tmp_fd)
+            sf.write(tmp_path, reduced_audio, sample_rate)
+            os.replace(tmp_path, file_path)
+            yield f"[DEBUG] Cleaned: {file_path.name}"
+        except Exception as e:
+            if tmp_path and os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            yield f"[ERROR] Failed to save {file_path.name}: {e}"
+            return
+
         yield "=====================================\n"
 
-    def process_audio_files(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
-        if not os.path.isdir(self.input_dir):
+    def process_audio_files(self, frame_length, hop_length, silence_threshold,
+                            noise_reduction_strength, use_spectral_gating):
+        """Process all WAV files in the input directory."""
+        if not self.input_dir.is_dir():
             yield f"[ERROR] Input directory not found: {self.input_dir}"
             return
 
         files = sorted(
-            f for f in os.listdir(self.input_dir)
-            if f.lower().endswith('.wav') and not f.lower().endswith('_cleaned.wav')
+            p for p in self.input_dir.iterdir()
+            if p.suffix.lower() == '.wav'
         )
         yield f"[DEBUG] Found {len(files)} files to process.\n"
 
-        # Process files sequentially to ensure proper yielding to Gradio
-        for file in files:
+        for file_path in files:
             try:
-                for log in self.process_single_audio_file(file, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
+                for log in self.process_single_audio_file(
+                    file_path, frame_length, hop_length, silence_threshold,
+                    noise_reduction_strength, use_spectral_gating,
+                ):
                     yield log
             except Exception as e:
-                yield f"[ERROR] Failed to process {file}: {str(e)}"
+                yield f"[ERROR] Failed to process {file_path.name}: {e}"
 
         yield f"\n[OK] Finished filtering {len(files)} files."
 
-    def gradio_run(self, frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
+    def gradio_run(self, frame_length, hop_length, silence_threshold,
+                   noise_reduction_strength, use_spectral_gating):
         if not check_wav_files():
             yield "ERROR: No .wav files found in the input directory. Please upload them and try again."
             return
 
         logs = []
-        for log in self.process_audio_files(frame_length, hop_length, silence_threshold, prop_decrease_noisy, prop_decrease_normal, use_spectral_gating):
+        for log in self.process_audio_files(
+            frame_length, hop_length, silence_threshold,
+            noise_reduction_strength, use_spectral_gating,
+        ):
             logs.append(log)
             yield "\n".join(logs)
