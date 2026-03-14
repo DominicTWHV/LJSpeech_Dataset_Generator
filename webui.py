@@ -79,8 +79,13 @@ class LJSpeechDatasetUI:
             copied = 0
 
             try:
+                dataset_dir_resolved = Path(self.dataset_dir).resolve()
                 for temp_file_path in file_paths:
                     file_name = os.path.basename(temp_file_path)
+                    # stays strictly inside dataset_dir before any file operation
+                    if (dataset_dir_resolved / file_name).resolve().parent != dataset_dir_resolved:
+                        return f"Invalid file name: {file_name}"
+                    
                     ext = Path(file_name).suffix.lower()
 
                     if ext not in allowed_ext:
