@@ -15,6 +15,7 @@ class ASREngine:
 
     MODEL_SIZES = ["tiny", "base", "small", "medium", "large-v3"]
     DEVICES = ["auto", "cpu", "cuda"]
+    COMPUTE_TYPES = ["auto", "int8", "int8_float16", "int8_float32", "int16", "float16", "float32"]
     LANGUAGES = [
         "auto", "en", "zh", "de", "es", "ru", "ko", "fr", "ja", "pt", "tr",
         "pl", "ca", "nl", "ar", "sv", "it", "id", "hi", "fi", "vi", "he",
@@ -37,11 +38,12 @@ class ASREngine:
         self._model = None
         self._batched_pipeline = None
 
-    def configure(self, engine, model_size="base", language="auto", device="auto"):
+    def configure(self, engine, model_size="base", language="auto", device="auto", compute_type="auto"):
         needs_reload = (
             self.engine != engine
             or self.model_size != model_size
             or self.device != device
+            or self.compute_type != compute_type
         )
         if needs_reload:
             self._model = None
@@ -51,6 +53,7 @@ class ASREngine:
         self.model_size = model_size
         self.language = language if language and language != "auto" else None
         self.device = device
+        self.compute_type = compute_type
 
     def _ensure_model(self):
         if self._model is None:
@@ -257,12 +260,12 @@ class MainProcess:
                     continue
         return total_length
 
-    def gradio_run(self, separator, asr_engine, model_size, language, device):
+    def gradio_run(self, separator, asr_engine, model_size, language, device, compute_type):
         if not check_wav_files():
             yield "ERROR: No .wav files found in the input directory. Please upload them and try again."
             return
 
-        self.asr.configure(engine=asr_engine, model_size=model_size, language=language, device=device)
+        self.asr.configure(engine=asr_engine, model_size=model_size, language=language, device=device, compute_type=compute_type)
 
         logs = []
         for log in self.process_wav_files(separator=separator):
