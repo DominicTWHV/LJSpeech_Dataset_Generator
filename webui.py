@@ -280,7 +280,7 @@ class LJSpeechDatasetUI:
 
                         save_dur = gr.Button("Save", variant="secondary")
                     
-                        gr.Markdown("**Seperator Controls**")
+                        gr.Markdown("**Separator Controls**")
                         separator_val = gr.Textbox(label="Separator", value="|", interactive=True)
                         save_sep = gr.Button("Save", variant="secondary")
 
@@ -309,6 +309,20 @@ class LJSpeechDatasetUI:
                             label="Compute Type (local only)",
                             choices=ASREngine.COMPUTE_TYPES,
                             value="auto",
+                        )
+                        asr_cpu_workers = gr.Slider(
+                            label="CPU ASR Workers",
+                            minimum=1,
+                            maximum=max(1, os.cpu_count() or 1),
+                            step=1,
+                            value=min(4, max(1, os.cpu_count() or 1)),
+                        )
+                        asr_gpu_workers_per_device = gr.Slider(
+                            label="GPU Workers Per Device",
+                            minimum=1,
+                            maximum=4,
+                            step=1,
+                            value=1,
                         )
                         
                     with gr.Column():
@@ -353,6 +367,8 @@ Configure the speech recognition engine.
   - `int16` — Half-integer precision
   - `float16` — Half-float (GPU only)
   - `float32` — Full precision, safest fallback
+- **CPU ASR Workers**: Number of concurrent transcription workers when running on CPU.
+- **GPU Workers Per Device**: Number of concurrent workers per visible CUDA GPU.
 
 **You should leave all of these options alone if you don't understand them.**""")
 
@@ -360,7 +376,20 @@ Configure the speech recognition engine.
             
                 pp_filter.click(noise_reducer.gradio_run, inputs=[frame_length, hop_length, silence_threshold, noise_reduction_strength, use_spectral_gating], outputs=pp_status)
                 pp_chunk.click(splitter.gradio_run, inputs=[min_duration_slider, max_duration_slider], outputs=pp_status)
-                pp_main.click(main_process.gradio_run, inputs=[separator_val, asr_engine, asr_model_size, asr_language, asr_device, asr_compute_type], outputs=pp_status)
+                pp_main.click(
+                    main_process.gradio_run,
+                    inputs=[
+                        separator_val,
+                        asr_engine,
+                        asr_model_size,
+                        asr_language,
+                        asr_device,
+                        asr_compute_type,
+                        asr_cpu_workers,
+                        asr_gpu_workers_per_device,
+                    ],
+                    outputs=pp_status,
+                )
     
                 def update_separator(new_sep):
                     if not new_sep or len(new_sep) != 1:
